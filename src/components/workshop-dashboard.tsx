@@ -25,7 +25,7 @@ const t: Record<Language, Labels> = {
 };
 
 const speechLocale: Record<Language, string> = { en: "en-US", fr: "fr-FR", bm: "bm-ML", zh: "zh-CN" };
-const examples: Record<Language, string> = { en: "The Epson L3210 feeds paper, but it reports a paper jam before printing starts.", fr: "L’Epson L3210 entraîne le papier, mais signale un bourrage avant le début de l’impression.", bm: "Epson L3210 bɛ papier minɛ, nka a bɛ papier jam fɔ print ka daminɛ ɲɛ.", zh: "Epson L3210 能进纸，但在开始打印前提示卡纸。" };
+const examples: Record<Language, string> = { en: "Epson L3210. It says paper jam. I see no paper.", fr: "Epson L3210. Il dit bourrage papier. Je ne vois pas de papier.", bm: "Epson L3210. A bɛ papier jam fɔ. N tɛ papier ye.", zh: "Epson L3210 提示卡纸。我看不到纸。" };
 const localized: Record<Language, Record<string, string>> = { en: { active: "Active", resolved: "Resolved", escalated: "Escalated", low: "low", medium: "medium", high: "high", technician: "technician", agent: "agent", vision: "vision" }, fr: { active: "Actif", resolved: "Résolu", escalated: "À escalader", low: "faible", medium: "moyen", high: "élevé", technician: "technicien", agent: "agent", vision: "vision" }, bm: { active: "Bɛ baara kɛ", resolved: "A ban", escalated: "A ka taa ɲɛnamaya kɛla ma", low: "dɔgɔ", medium: "cɛma", high: "belebele", technician: "baara kɛla", agent: "agent", vision: "nyɛ" }, zh: { active: "进行中", resolved: "已解决", escalated: "需升级处理", low: "低", medium: "中", high: "高", technician: "技术员", agent: "助手", vision: "视觉" } };
 const label = (value: string, language: Language) => localized[language][value] ?? value;
 

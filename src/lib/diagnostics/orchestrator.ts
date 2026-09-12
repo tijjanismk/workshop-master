@@ -101,10 +101,16 @@ const decisionJsonSchema = {
 
 const agentInstructions = `You are The Workshop Master, a remote expert maintenance technician.
 Guide a technician through one physical diagnostic test at a time.
+Use short, plain sentences that can be understood by a person with limited literacy. Prefer everyday words over technical jargon, explain a technical word when it is necessary, and ask for only one observation at a time.
 Separate observed facts, technician statements, retrieved evidence, and hypotheses.
 Never state a hypothesis as confirmed. Do not invent a diagnosis.
 Treat retrievedSources in the session as external evidence, not as technician observations.
 Update machine only from explicit technician evidence. Use an empty string for any unknown machine field.
+Before asking a question, inspect the full session: machine fields, symptoms, observations, currentTest, and completed tests.
+Never ask again for a manufacturer, model, error code, symptom, or test result already present anywhere in the session.
+Treat the new technician statement as the result of the current test whenever a currentTest exists. Advance the diagnostic state instead of restarting intake.
+If a manufacturer, model, or error code appears in any technician observation, extract it into machine and use it in the next test.
+Only request missing information when it is necessary for the next lowest-risk decision. Do not use generic intake questions after the first turn.
 Before any physical manipulation, include concise safety instructions when necessary.
 Prefer the lowest-risk test with the highest information value.
 Return the complete updated list of hypotheses, not only newly created hypotheses.
@@ -132,7 +138,33 @@ const languageInstruction: Record<SupportedLanguage, string> = {
   zh: "Reply in Simplified Chinese.",
 };
 
-function buildFallbackDecision(language: SupportedLanguage): AgentDecision {
+function buildFallbackDecision(
+  language: SupportedLanguage,
+  session?: DiagnosticSession,
+): AgentDecision {
+  if (session && session.observations.length > 1) {
+    const unavailable = {
+      en: "I retained the full diagnostic context, but the AI provider is unavailable. I will not repeat earlier intake questions or recommend a new physical test without a reliable decision.",
+      fr: "J’ai conservé tout le contexte du diagnostic, mais le fournisseur IA est indisponible. Je ne vais ni répéter les questions déjà posées ni recommander un nouveau test sans décision fiable.",
+      bm: "N y'a sɛgɛsɛgɛli kɔrɔbɔ bɛɛ mara, nka IA fournisseur tɛ se sisan. N tɛna ɲininkali kɔrɔw segin walima test kura fɔ ni dɔnni ɲuman tɛ.",
+      zh: "我已保留完整的诊断上下文，但 AI 服务当前不可用。为保证安全，我不会重复已回答的问题，也不会在没有可靠判断时建议新的操作。",
+    }[language];
+    return {
+      assistantMessage: unavailable,
+      machine: {},
+      observations: [],
+      visualObservations: [],
+      hypotheses: session.hypotheses.map((hypothesis) => ({
+        title: hypothesis.title,
+        rationale: hypothesis.rationale,
+        confidence: hypothesis.confidence,
+        status: hypothesis.status,
+      })),
+      nextTest: undefined,
+      safetyWarnings: [],
+      status: "active",
+    };
+  }
   const fallback = {
     en: {
       message: "I recorded the reported symptom. Before touching the machine, identify its manufacturer, exact model, and any displayed error code or LED pattern.",
@@ -177,19 +209,49 @@ function buildFallbackDecision(language: SupportedLanguage): AgentDecision {
   };
 }
 
+function buildModelContext(session: DiagnosticSession) {
+  return {
+    id: session.id,
+    machine: session.machine,
+    symptoms: session.symptoms.slice(-5),
+    observations: session.observations.slice(-12).map(({ source, text, createdAt }) => ({
+      source,
+      text,
+      createdAt,
+    })),
+    hypotheses: session.hypotheses.map(({ title, rationale, confidence, status }) => ({
+      title,
+      rationale,
+      confidence,
+      status,
+    })),
+    currentTest: session.currentTest,
+    recentTests: session.tests.slice(-3),
+    retrievedSources: session.retrievedSources.slice(0, 3).map((source) => ({
+      title: source.title,
+      url: source.url,
+      highlights: source.highlights.map((highlight) => highlight.slice(0, 600)),
+    })),
+    safetyWarnings: session.safetyWarnings.slice(-5),
+    status: session.status,
+  };
+}
+
 async function requestModelDecision(
   session: DiagnosticSession,
   message: string,
   imageDataUrl?: string,
   language: SupportedLanguage = "en",
 ): Promise<ProviderDecision> {
-  const prompt = `Diagnostic session:\n${JSON.stringify(session)}\n\nNew technician statement:\n${message}\n\nImage attached: ${Boolean(imageDataUrl)}`;
+  const prompt = `Diagnostic session:\n${JSON.stringify(buildModelContext(session))}\n\nNew technician statement:\n${message}\n\nImage attached: ${Boolean(imageDataUrl)}`;
 
   if (process.env.DEEPSEEK_API_KEY) {
     try {
       const client = new OpenAI({
         apiKey: process.env.DEEPSEEK_API_KEY,
         baseURL: "https://api.deepseek.com",
+        timeout: 12_000,
+        maxRetries: 0,
       });
       const response = await client.responses.create({
         model:
@@ -233,6 +295,8 @@ async function requestModelDecision(
     const client = new OpenAI({
       apiKey: process.env.OPENROUTER_API_KEY,
       baseURL: "https://openrouter.ai/api/v1",
+      timeout: 12_000,
+      maxRetries: 0,
     });
     const response = await client.chat.completions.create({
       model: process.env.OPENROUTER_MODEL ?? "openrouter/free",
@@ -271,7 +335,7 @@ async function requestModelDecision(
     };
   }
 
-  return { decision: buildFallbackDecision(language), provider: "safe-fallback" };
+  return { decision: buildFallbackDecision(language, session), provider: "safe-fallback" };
 }
 
 function applyDecision(session: DiagnosticSession, decision: AgentDecision): void {
@@ -367,7 +431,7 @@ export async function processTechnicianMessage(
     return { session, ...result };
   } catch (error) {
     console.error("Diagnostic decision failed", error);
-    const decision = buildFallbackDecision(language);
+    const decision = buildFallbackDecision(language, session);
     applyDecision(session, decision);
     saveSession(session);
 

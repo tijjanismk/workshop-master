@@ -13,7 +13,7 @@ const exaResponseSchema = z.object({
 });
 
 function hasTechnicalIdentifier(message: string) {
-  return /\b(epson|canon|brother|xerox|samsung|ricoh|hp|l\d{3,4}|e[- ]?\d+|0x[0-9a-f]+)\b/i.test(
+  return /\b(epson|canon|brother|xerox|samsung|ricoh|hp|toyota|honda|ford|renault|peugeot|bmw|mercedes|volkswagen|vw|l\d{3,4}|e[- ]?\d+|0x[0-9a-f]+|p0\d{3})\b/i.test(
     message,
   );
 }
@@ -30,7 +30,7 @@ export async function retrieveTechnicalEvidence(
     return [];
   }
 
-  const query = `Official printer service documentation and troubleshooting procedure for: ${message}`;
+  const query = `Official manufacturer service documentation and low-risk troubleshooting procedure for: ${message}`;
 
   try {
     const response = await fetch("https://api.exa.ai/search", {

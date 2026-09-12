@@ -33,14 +33,26 @@ Use the same secret in Telegram’s `secret_token` webhook setting and in `TELEG
 
 ## Demonstration script
 
-1. Explain: “This is a diagnostic agent, not a generic chatbot. It remembers evidence, proposes one safe test, and updates its decision.”
-2. Click **Load Epson demo example** and submit it.
-3. Point out the current test, provider label, safety area, and persistent diagnostic state.
-4. Reply with a realistic result, for example: “The sensor lever returns freely.”
-5. Show that the same session receives an updated next test rather than restarting the conversation.
-6. Start a new session with **New session** to reset the demo state.
-7. Attach a clear printer-mechanism or error-display photo to demonstrate the vision path.
-8. If Exa is configured, point out sources shown in **Technical evidence**.
+1. Explain in plain language: “Tell it what you see. It remembers what you said and gives one safe thing to check.”
+2. Click **Load Epson demo example** and submit the short message: “Epson L3210. It says paper jam. I see no paper.”
+3. Point out the single next action, the safety instruction, and the Epson sources shown in **Technical evidence**.
+4. Reply with a simple result: “The small lever moves freely. The red light stays on.”
+5. Show that the next answer uses this result and does not ask again for the printer model.
+6. Start a new session with **New session**.
+7. Run the garage example by typing: “Toyota. The car does not start. The dashboard lights come on.”
+8. Reply: “The starter makes one click. The engine does not turn.” Explain that the agent asks for one safe observation before suggesting any repair.
+9. Attach a clear printer mechanism, dashboard warning light, or error-display photo to demonstrate the vision path.
+
+## Plain-language design rule
+
+The product is designed for people who may prefer speaking or short messages over technical writing. Good input is a short observation, for example:
+
+- “The car makes one click.”
+- “The red light stays on.”
+- “It pulls paper but does not print.”
+- “There is a burning smell.”
+
+The agent must answer with short steps, avoid unexplained technical words, and never shame someone for not knowing a model number or part name.
 
 ## Recovery plan
 

@@ -210,3 +210,6 @@ The product should make it obvious that it is a workshop agent, not a generic ch
 - Added a Telegram adapter that maps each chat to one persisted diagnostic session, accepts text or photos, and replies with the next diagnostic action.
 - Added Simplified Chinese (`zh`) end to end: dashboard labels, browser voice locale, API validation, agent response instruction, safe fallback, and Telegram language detection. The dashboard labels are now translated for French, English, Simplified Chinese, and experimental Bambara.
 - Restyled the dashboard with HeroUI v3 components (cards, buttons, chips, text input, and loading feedback) while preserving the diagnostic workflow.
+- Strengthened the diagnostic prompt to prevent repeated intake questions and compacted the model context (recent facts, current test, and bounded source highlights) to keep later turns responsive after retrieval.
+- Added an accessible-language rule: short spoken-style messages, one observation per turn, and no unexplained jargon. The demo now includes simple Epson and garage scenarios; Exa retrieval recognizes common vehicle brands and OBD P0xxx codes.
+- Added a 12-second per-provider timeout with no automatic retries. Slow providers now fall back safely instead of leaving technicians waiting indefinitely.
