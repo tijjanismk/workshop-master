@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { processTechnicianMessage } from "@/lib/diagnostics/orchestrator";
+import type { DiagnosticSession } from "@/lib/diagnostics/types";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,10 @@ const requestSchema = z.object({
     .max(7_000_000)
     .regex(/^data:image\/(jpeg|png|webp|gif);base64,/, "Unsupported image format.")
     .optional(),
+  // The browser sends its last trusted session snapshot on every turn. This
+  // keeps a web diagnostic continuous when Vercel routes two requests to
+  // different serverless instances with separate /tmp directories.
+  sessionSnapshot: z.unknown().optional(),
 });
 
 export async function POST(request: Request) {
@@ -38,6 +43,7 @@ export async function POST(request: Request) {
       parsed.data.message,
       parsed.data.imageDataUrl,
       parsed.data.language,
+      parsed.data.sessionSnapshot as DiagnosticSession | undefined,
     );
     return Response.json(result, { status: 200 });
   } catch (error) {

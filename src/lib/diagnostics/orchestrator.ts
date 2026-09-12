@@ -402,8 +402,13 @@ export async function processTechnicianMessage(
   message: string,
   imageDataUrl?: string,
   language: SupportedLanguage = "en",
+  sessionSnapshot?: DiagnosticSession,
 ): Promise<ProcessTurnResult> {
-  const session = sessionId ? getSession(sessionId) : createSession();
+  const persistedSession = sessionId ? getSession(sessionId) : undefined;
+  const session =
+    persistedSession ??
+    (sessionSnapshot?.id === sessionId ? sessionSnapshot : undefined) ??
+    createSession();
   if (!session) {
     throw new Error("Diagnostic session not found.");
   }
