@@ -11,7 +11,13 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const payload = requestSchema.safeParse(await request.json());
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "Request body must be valid JSON." }, { status: 400 });
+  }
+  const payload = requestSchema.safeParse(body);
   if (!payload.success) {
     return Response.json({ error: "A short message is required." }, { status: 400 });
   }

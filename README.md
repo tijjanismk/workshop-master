@@ -1,4 +1,17 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# The Workshop Master
+
+Multilingual, safety-aware diagnostic assistant for workshops, with web and Telegram channels.
+
+## Durable Telegram memory with Supabase
+
+1. Create a Supabase project.
+2. In **SQL Editor**, run [`supabase/schema.sql`](./supabase/schema.sql).
+3. In **Project Settings → API**, copy the project URL and the server-only `service_role` key.
+4. Add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to Vercel environment variables, then redeploy.
+
+When those variables are absent, local development uses SQLite. On Vercel, SQLite uses temporary `/tmp` storage and is not durable across instances.
+
+Never place the Supabase service-role key in a `NEXT_PUBLIC_` variable, browser code, Git, or a Telegram message.
 
 ## Getting Started
 

@@ -1,123 +1,143 @@
-# The Workshop Master — AI Context
+# The Workshop Master — AI and Product Context
 
-This document is the source of truth for the product, agent behavior, technical architecture, and implementation priorities.
+This document is the source of truth for product behavior, architecture, UX decisions, and implementation priorities. Update it whenever a product, provider, storage, retrieval, or interface decision changes.
 
 ## 1. Product mission
 
-The Workshop Master is a multimodal diagnostic assistant for apprentices and maintenance technicians.
+**The Workshop Master** is a multilingual, multimodal diagnostic mentor for technicians and apprentices: the master technician who is not in the room.
 
-The first domain is printer and electronics troubleshooting. The product is not a generic chatbot. It must guide a technician through a real diagnostic loop:
+The first reference domain is printer/electronics troubleshooting. Garage and vehicle cases are supported as demos and retrieval scenarios. The product is not a generic chatbot. It guides a technician through a real loop:
 
 ```text
 Observe → Understand → Hypothesize → Test → Evaluate → Next action
 ```
 
-The result must be a specific, safe physical test or a clear escalation recommendation.
+The output must be one specific, low-risk physical test or a clear escalation recommendation.
 
-## 2. Hackathon scope
+## 2. Hackathon scope and reference demo
 
-The demo must reliably show one printer troubleshooting workflow:
+The reliable reference workflow is an Epson L3210 that feeds paper, reaches the print area, sometimes reports a paper jam, and does not start printing:
 
 ```text
-Technician message or photo
-→ Persistent diagnostic session
-→ Structured facts and hypotheses
-→ One safe next test
-→ Technician result
-→ Updated diagnostic state
-→ Next test or escalation
+Text, photo, or browser voice input
+→ persistent diagnostic session
+→ structured facts, evidence, and hypotheses
+→ one safe next test
+→ technician result
+→ updated state, resolution, or escalation
 ```
 
-The first reference case is an Epson L3210 that feeds paper, reaches the print area, sometimes reports a paper jam, and does not start printing. The diagnosis must never be hardcoded.
+The diagnosis must never be hardcoded. Real Telegram text/photo interaction is supported. `/telegram-demo` and `/whatsapp-demo` are demonstration routes; the WhatsApp route is not an official Meta integration.
 
 ## 3. Product rules
 
-- Treat each incoming message as part of a diagnostic session, not as an isolated chat.
-- Keep facts, technician statements, retrieved evidence, and hypotheses separate.
-- Never present a hypothesis as a confirmed diagnosis.
-- Ask for one test at a time.
-- Prefer the lowest-risk test with the highest information value.
-- Do not ask a technician to manipulate a machine before giving required safety instructions.
-- Escalate instead of suggesting a high-risk remote operation.
-- Never expose API keys to the client or commit them to Git.
+- Treat every message as part of a diagnostic session, never as isolated chat.
+- Keep technician observations, visual facts, external evidence, hypotheses, and general AI knowledge distinct.
+- Treat the technician as competent. Do not lecture, restart generic intake, or ask again for a known fact.
+- Answer direct technical questions first; then propose one test only if it helps.
+- Separate a reported symptom from the likely underlying cause. Do not anchor on the first named component, forum post, or video.
+- Keep competing hypotheses when evidence permits and choose the lowest-risk test with the highest ability to distinguish them.
+- Never present a hypothesis as confirmed or invent an unseen fault.
+- Give safety instructions only when relevant. Escalate instead of suggesting high-risk remote work.
+- For a vague vehicle complaint, ask for the symptom category before proposing an action. Never ask the user to start, rev, or drive the vehicle just to begin diagnosis.
+- For brakes/steering, smoke, fuel smell or leak, severe overheating, or a red warning light: tell the user not to start or drive, then triage the immediate risk.
+- Never expose, log, commit, or send server secrets to a client/channel.
 
-## 4. Architecture
+## 4. Current architecture
 
 ```text
-Workshop dashboard / future WhatsApp adapter
-                ↓
-         Input gateway
-                ↓
-     POST /api/diagnostics
-                ↓
-      Session orchestrator
-          ↙            ↘
- SQLite session store   AI provider router
-                         ↙          ↘
-                   DeepSeek      OpenRouter fallback
+Web Diagnostic Workspace / Telegram / WhatsApp simulator
                          ↓
-                  Decision validator
+                  Input gateway
                          ↓
-            Safety guard and state updater
+             POST /api/diagnostics
                          ↓
-                 Structured response
+              Session orchestrator
+                 ↙              ↘
+   Supabase session store       Provider router
+   SQLite local fallback        DeepSeek → OpenRouter → safe fallback
+                         ↓
+         Structured Zod decision validation
+                         ↓
+              AI quality-review pass
+                         ↓
+  Exa evidence routine + safety/state updater
+                         ↓
+            Structured session and decision response
 ```
 
-## 5. Current modules
+## 5. Runtime modules
 
 | Module | Responsibility | Status |
 | --- | --- | --- |
-| `src/lib/diagnostics/types.ts` | Diagnostic session and decision contracts | Implemented |
-| `src/lib/diagnostics/session-store.ts` | Local SQLite persistence | Implemented |
-| `src/lib/diagnostics/orchestrator.ts` | Provider routing, decision validation, safety rules, state updates | Implemented |
-| `src/app/api/diagnostics/route.ts` | HTTP entry point and input validation | Implemented |
-| `src/components/workshop-dashboard.tsx` | Display the active diagnostic state and collect text input | Implemented |
-| Browser voice controls | Speech-to-text input and text-to-speech response in the dashboard | Implemented, browser-dependent |
-| `src/app/api/channels/telegram/route.ts` | Secure Telegram webhook for text and photos | Implemented, requires configuration |
-| Image processing | Validate an inspection photo and send it to the vision model | Implemented |
-| Voice processing | Transcribe voice messages into the same session context | Planned |
-| `src/lib/retrieval/exa.ts` | Retrieve targeted technical evidence | Implemented |
-| WhatsApp adapter | Forward WhatsApp media and replies to the input gateway | Planned |
+| `src/lib/diagnostics/types.ts` | Session, test, source, and decision contracts | Implemented |
+| `src/lib/diagnostics/session-store.ts` | Supabase persistence with SQLite local fallback | Implemented |
+| `src/lib/diagnostics/orchestrator.ts` | Provider routing, validation, self-review, source policy, safety, state updates | Implemented |
+| `src/lib/retrieval/exa.ts` | Manufacturer/community/video evidence retrieval and classification | Implemented |
+| `src/app/api/diagnostics/route.ts` | Web API input and session-snapshot validation | Implemented |
+| `src/app/api/channels/telegram/route.ts` | Telegram webhook for text/photos, secret verification, timeouts | Implemented |
+| `src/app/api/channels/whatsapp-simulator/route.ts` | Demo adapter using the shared diagnostic engine | Implemented |
+| `src/components/workshop-dashboard.tsx` | shadcn/ui Diagnostic Workspace with text/photo/browser-voice controls and evidence timeline | Implemented |
+| `src/components/ui/*` | Local shadcn/ui Button, Card, Badge, Alert, and Textarea primitives | Implemented |
+| Browser speech input/output | Dictation and read-aloud where the browser supports it | Implemented; browser dependent |
+| Voice-note transcription | Telegram/WhatsApp audio transcription to session text | Planned |
+| Official WhatsApp Cloud adapter | Meta webhook and media integration | Planned |
 
-## 6. Diagnostic session
+## 6. Session and persistence model
 
-Every session stores:
+Each `DiagnosticSession` contains:
 
 ```text
-Machine information
-Symptoms
-Observations
+Machine: manufacturer, model, type
+Symptoms and observations (technician, agent, vision)
 Hypotheses
-Completed and current tests
+Completed tests and optional current test
+Retrieved sources: title, URL, source type, query, highlights
 Safety warnings
-Status: active, resolved, or escalated
+Status: active, resolved, escalated
 ```
 
-The SQLite database is local for the hackathon prototype. The application creates it at `data/workshop-master.sqlite` when the first session is saved.
+When `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are configured, server-side sessions and Telegram chat mappings use these Supabase tables:
 
-## 7. Agent decision contract
+```text
+diagnostic_sessions
+channel_session_map
+```
 
-For each technician turn, the model returns a validated structured decision:
+RLS is enabled and no public policy exposes these tables. The server service-role key is the only access path. SQLite at `data/workshop-master.sqlite` is retained for local development. On Vercel, `/tmp` SQLite is an emergency/demo fallback only and is not durable across serverless instances.
+
+The web client sends a structurally validated snapshot only as a Vercel continuity fallback; shared Supabase storage is the production path.
+
+## 7. Agent decision and quality control
+
+Every model turn returns a validated structured decision:
 
 ```text
 assistantMessage
 machine
 observations[]
+visualObservations[]
 hypotheses[]
 nextTest | null
 safetyWarnings[]
 status
 ```
 
-`nextTest` contains a title, instruction, purpose, risk level, and whether the machine must be powered off. High-risk tests are blocked by the application and changed to an escalation.
+`nextTest` includes title, instruction, purpose, risk, and power-off requirement. High-risk actions are changed to escalation. A resolved, escalated, or no-next-test decision clears `currentTest`, preventing channels from resending a stale physical instruction.
+
+The first response is checked with Zod. Then, unless `DIAGNOSTIC_SELF_REVIEW=false`, the selected AI provider performs a second structured review. It corrects repeated questions, unsupported claims, ignored direct questions, unsafe/incoherent tests, and mismatched status/safety. If this review fails, the already validated first decision is kept so diagnostics do not block.
+
+The expected latency is intentional and communicated in the interface as:
+
+> L’IA réfléchit : contexte, sources et sécurité…
 
 ## 8. Provider routing
 
 ```text
-DeepSeek key available?
+DeepSeek configured?
   Yes → DeepSeek Responses API
-  No or request fails → OpenRouter, only when its key is configured
-  Neither available → Safe deterministic fallback
+  Failure or no key → OpenRouter if configured
+  Neither available → safe deterministic fallback
 ```
 
 Environment variables:
@@ -131,31 +151,69 @@ OPENROUTER_API_KEY=
 OPENROUTER_MODEL=openrouter/free
 
 EXA_API_KEY=
+DIAGNOSTIC_SELF_REVIEW=true
+
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_WEBHOOK_SECRET=
 ```
 
-Use the text model for technician messages. Use the vision model only when an image is actually attached. OpenRouter is a low-volume fallback, not a second parallel opinion.
+Use the text model for technician messages and a vision model only when an image is attached. OpenRouter is a fallback, not a parallel second opinion.
 
-## 9. Retrieval orchestration
+## 9. Evidence and retrieval routine
 
-Exa is called only when the next decision needs technical evidence, for example:
-
-- a machine model or error code is known;
-- a hypothesis needs confirmation from a service manual;
-- a component or sensor behavior is unclear.
+For a new relevant technical identifier (brand, model, error code, OBD code), Exa runs a bounded three-part routine in parallel:
 
 ```text
-Diagnostic context
-→ Focused search query
-→ Exa results
-→ Relevant technical evidence
-→ Agent decision
+1. Current session context and technician observations
+2. Manufacturer service manuals/support documentation (preferred)
+3. Technician forums/community discussions (lead, not proof)
+4. YouTube/video demonstrations (lead, not proof)
+5. General model knowledge (hypothesis only, never external evidence)
 ```
 
-Retrieved information must include a source URL and must be labeled as external evidence in the session.
+Each result is kept with a URL, original query, highlights, and source type:
 
-## 10. Entry point
+```text
+manufacturer | community | video | web
+```
 
-The current entry point is:
+Source labels are checked from result domains where possible. The agent must prefer manufacturer evidence. Community/video claims require a safe confirmation test; model training must never be presented as a manufacturer document, forum post, or proof.
+
+## 10. Frontend architecture and UX decision
+
+The frontend is Next.js App Router, React 19, Tailwind CSS 4, and **shadcn/ui**. HeroUI has been removed by explicit product decision; do not reintroduce it. Local shadcn primitives live in `src/components/ui` and are styled with the project’s industrial dark theme.
+
+```text
+src/app/page.tsx
+  → WorkshopDashboard
+      → /api/diagnostics
+      → structured session and decision
+```
+
+The primary screen is the **Diagnostic Workspace**, not a chatbot or accounting-style dashboard. It must answer immediately:
+
+> What does the technician need to do next?
+
+Design direction:
+
+- Serious industrial-tech tool: deep navy/slate surfaces, electric blue for action, amber only for attention/safety.
+- No generic chatbot identity, cartoon robots, excessive gradients, or decorative animation.
+- Mobile workshop-floor use is first-class: touch-friendly actions, readable contrast, clear labels, and a layout that does not merely shrink desktop.
+- Bambara is experimental. French, English, Simplified Chinese, and Bambara remain accessible in the language control.
+
+Next UX refactor priority, without replacing the real API flow:
+
+1. Machine/session header with elapsed session time and relevant safety state.
+2. Further mobile action-bar refinement.
+3. Timeline support for image and voice event cards.
+4. Compact technical-source panel with expandable highlights.
+
+## 11. Entry points
+
+Web API:
 
 ```text
 POST /api/diagnostics
@@ -165,52 +223,52 @@ First message:
 
 ```json
 {
-  "message": "The printer feeds paper but reports a paper jam before printing."
+  "message": "The printer feeds paper but reports a paper jam before printing.",
+  "language": "fr"
 }
 ```
 
-Later message in the same session:
+Later message:
 
 ```json
 {
   "sessionId": "the-session-uuid",
-  "message": "The sensor lever returns freely."
+  "message": "The sensor lever returns freely.",
+  "language": "fr"
 }
 ```
 
-The response contains the updated session, the decision, and the selected provider.
+The response contains the updated `session`, the decision, and the selected provider.
 
-## 11. Implementation order
+## 12. Implementation priorities
 
-1. Diagnostic core and persistence — complete.
-2. Workshop dashboard for text interaction and visible state — complete.
-3. Image upload and DeepSeek vision routing — complete.
-4. Exa technical retrieval with source references — complete.
-5. Browser voice input and output — complete for supported browsers; Bambara remains experimental.
-6. End-to-end Epson L3210 demonstration.
-7. Telegram webhook for text and photos — complete, requires a bot token and public HTTPS URL.
-8. WhatsApp Cloud API adapter — planned, requires Meta configuration and a public HTTPS URL.
+1. Diagnostic core, Supabase persistence, provider fallback, safety, and self-review — complete.
+2. Text/photo/browser-voice workspace and multilingual UI — complete.
+3. Telegram text/photo integration — complete; requires Vercel production variables for durable cloud use.
+4. Evidence retrieval: manufacturer, community, video, and context — complete.
+5. Epson L3210 end-to-end demo and real Telegram test — complete.
+6. shadcn/ui Diagnostic Workspace refactor — complete.
+7. Audio “Shazam-style” prototype for vehicles/machines — planned. Sound similarity is a lead, never a confirmed diagnosis.
+8. Voice-note transcription, community evidence with consent, and offline-friendly flow — planned.
+9. Official WhatsApp Cloud API adapter — planned; requires Meta configuration and HTTPS webhook.
 
-## 12. Definition of done
+## 13. Definition of done
 
-A judge must see that the product receives technician evidence, remembers previous evidence, updates hypotheses, requests a concrete test, and progresses toward a diagnosis or safe escalation.
+A judge or technician can see that the product accepts evidence, remembers it, searches and labels relevant sources, updates hypotheses, selects one safe next action, and progresses to resolution or escalation without acting like a generic chat bot.
 
-The product should make it obvious that it is a workshop agent, not a generic chatbot.
+## 14. Change log
 
-## 13. Change log
-
-- Added a workshop-first text dashboard with the current test, hypotheses, safety warnings, recent observations, and provider status.
-- The browser stores only the diagnostic session ID in local storage. The diagnostic history remains in the server-side SQLite session store.
-- Added image validation (JPEG, PNG, WebP, or GIF; maximum 5 MB) and DeepSeek vision routing. Visible facts from the model are stored as `vision` observations.
-- Added targeted Exa retrieval for first-turn messages containing a manufacturer, model, or error identifier. Sources are saved in the session and visible in the dashboard.
-- Added structured machine extraction. The agent can now populate the dashboard’s manufacturer, model, and machine type from explicit technician evidence.
-- Added a dashboard action to reset the browser’s active session and begin a fresh demo without deleting stored server-side history.
-- Added `demo_runbook.md` with the presentation sequence and a recovery plan for provider or retrieval outages.
-- Added language selection (French, English, and experimental Bambara) to guide model responses, browser dictation, and browser speech output.
-- Added a Telegram adapter that maps each chat to one persisted diagnostic session, accepts text or photos, and replies with the next diagnostic action.
-- Added Simplified Chinese (`zh`) end to end: dashboard labels, browser voice locale, API validation, agent response instruction, safe fallback, and Telegram language detection. The dashboard labels are now translated for French, English, Simplified Chinese, and experimental Bambara.
-- Restyled the dashboard with HeroUI v3 components (cards, buttons, chips, text input, and loading feedback) while preserving the diagnostic workflow.
-- Strengthened the diagnostic prompt to prevent repeated intake questions and compacted the model context (recent facts, current test, and bounded source highlights) to keep later turns responsive after retrieval.
-- Added an accessible-language rule: short spoken-style messages, one observation per turn, and no unexplained jargon. The demo now includes simple Epson and garage scenarios; Exa retrieval recognizes common vehicle brands and OBD P0xxx codes.
-- Added a 12-second per-provider timeout with no automatic retries. Slow providers now fall back safely instead of leaving technicians waiting indefinitely.
-- Added `/whatsapp-demo`: a WhatsApp-style, in-app simulator using the same diagnostic engine and persistent session. It is explicitly a demo, not a live WhatsApp Business integration.
+- Added HeroUI workspace with diagnostic state, text/photo input, browser voice controls, safety, hypotheses, observations, and sources.
+- Added French, English, Simplified Chinese, and experimental Bambara UI and agent instructions.
+- Added image validation and DeepSeek vision routing; only visible facts are stored as vision observations.
+- Added Telegram text/photo webhook, optional webhook secret, language mapping, outbound timeouts, and malformed-JSON handling.
+- Added WhatsApp-style in-app demo and dedicated Telegram demo route.
+- Added Supabase tables and server-side store adapter, with SQLite local fallback.
+- Added strict browser snapshot validation for stateless Vercel recovery.
+- Fixed stale next-test channel messages and localized current-turn safety formatting.
+- Added DeepSeek/OpenRouter structured self-review with a safe fallback to the first validated decision.
+- Added technician-respect, no-repeat, direct-answer, root-cause, and competing-hypothesis rules.
+- Added deterministic vehicle triage for vague or urgent automotive complaints before model routing; it prevents unsafe start/drive suggestions and screens critical warning signs.
+- Added Exa manufacturer/community/video retrieval routine and evidence-source classification.
+- Added the transparent processing message explaining that the AI is reviewing context, sources, and safety.
+- Replaced HeroUI with local shadcn/ui primitives and rebuilt the main workspace and Telegram demo without HeroUI imports.

@@ -1,9 +1,12 @@
 @import "tailwindcss";
-@import "@heroui/styles";
 
 :root {
-  --background: #07111f;
-  --foreground: #e8f1fc;
+  --background: #020617;
+  --foreground: #e2e8f0;
+  --card: #0f172a;
+  --muted: #334155;
+  --primary: #0ea5e9;
+  --warning: #f59e0b;
 }
 
 @theme inline {
@@ -11,81 +14,16 @@
   --color-foreground: var(--foreground);
 }
 
+* { border-color: rgb(51 65 85 / 0.65); }
+
 body {
+  min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  min-height: 100vh;
-}
-
-textarea {
-  width: 100%;
-}
-
-.button--primary {
-  background: linear-gradient(135deg, #22d3ee, #38bdf8) !important;
-  border: 1px solid #67e8f9 !important;
-  color: #07111f !important;
-  box-shadow: 0 10px 24px rgba(8, 145, 178, 0.25);
-}
-
-.button--primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #67e8f9, #60a5fa) !important;
-  transform: translateY(-1px);
-}
-
-.button--secondary,
-.button--tertiary {
-  background: #10233d !important;
-  border: 1px solid #315171 !important;
-  color: #d9f7ff !important;
-}
-
-.button--secondary:hover:not(:disabled),
-.button--tertiary:hover:not(:disabled) {
-  background: #173553 !important;
-  border-color: #22d3ee !important;
-}
-
-.button--primary:disabled,
-.button--secondary:disabled,
-.button--tertiary:disabled {
-  background: #182536 !important;
-  border-color: #26384c !important;
-  color: #64748b !important;
-  box-shadow: none;
-}
-
-button:not(:disabled) {
-  background: #102b47 !important;
-  border: 1px solid #315f88 !important;
-  color: #e6fbff !important;
-}
-
-button:not(:disabled):hover {
-  background: #16456c !important;
-  border-color: #67e8f9 !important;
-}
-
-button[type="submit"]:not(:disabled) {
-  background: linear-gradient(135deg, #22d3ee, #38bdf8) !important;
-  border-color: #67e8f9 !important;
-  color: #07111f !important;
-}
-
-button:disabled {
-  background: #182536 !important;
-  border-color: #26384c !important;
-  color: #64748b !important;
-}
-
-button:focus-visible,
-label:has(input[type="file"]):focus-within {
-  outline: 2px solid #22d3ee;
-  outline-offset: 3px;
 }
 
 ::selection {
-  background: #22d3ee;
-  color: #07111f;
+  background: #0ea5e9;
+  color: #020617;
 }

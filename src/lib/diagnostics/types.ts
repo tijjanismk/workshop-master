@@ -35,6 +35,8 @@ export type TechnicalSource = {
   title: string;
   url: string;
   highlights: string[];
+  sourceType: "manufacturer" | "community" | "video" | "web";
+  query: string;
 };
 
 export type DiagnosticSession = {
@@ -45,6 +47,8 @@ export type DiagnosticSession = {
   hypotheses: Hypothesis[];
   tests: DiagnosticTest[];
   retrievedSources: TechnicalSource[];
+  /** Normalized queries already sent to technical retrieval for this session. */
+  retrievalQueries: string[];
   currentTest?: DiagnosticTest;
   safetyWarnings: string[];
   status: "active" | "resolved" | "escalated";

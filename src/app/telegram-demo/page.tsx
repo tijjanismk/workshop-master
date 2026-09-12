@@ -1,7 +1,9 @@
 "use client";
 
-import { Button, Chip } from "@heroui/react";
 import { useState } from "react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 type Step = 0 | 1 | 2;
 
@@ -17,21 +19,21 @@ export default function TelegramDemoPage() {
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_15%_5%,rgba(14,165,233,.22),transparent_30%),radial-gradient(circle_at_82%_72%,rgba(37,99,235,.2),transparent_32%)]" />
       <section className="relative mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[1fr_420px]">
         <div className="max-w-2xl">
-          <Chip color="accent" variant="soft">LIVE DEMO FLOW</Chip>
+          <Badge>LIVE DEMO FLOW</Badge>
           <p className="mt-5 text-sm font-semibold tracking-[.2em] text-cyan-300 uppercase">Telegram channel simulation</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white sm:text-5xl">A real diagnostic conversation, inside the phone.</h1>
           <p className="mt-5 text-lg leading-8 text-slate-300">The Workshop Master remembers what the technician said, gives one safe action, and uses technical sources before moving forward.</p>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button variant="primary" onPress={advance}>{step === 0 ? "Start Telegram demo" : step === 1 ? "Send the test result" : "Demo completed"}</Button>
-            <Button variant="secondary" onPress={reset}>Restart</Button>
+            <Button onClick={advance}>{step === 0 ? "Start Telegram demo" : step === 1 ? "Send the test result" : "Demo completed"}</Button>
+            <Button variant="secondary" onClick={reset}>Restart</Button>
           </div>
 
           <div className="mt-7 flex flex-wrap gap-2 text-sm text-slate-300">
-            <Chip size="sm" variant="soft">Live Telegram bot connected</Chip>
-            <Chip size="sm" variant="soft">DeepSeek reasoning</Chip>
-            <Chip size="sm" variant="soft">Exa technical sources</Chip>
-            <Chip size="sm" variant="soft">Context preserved</Chip>
+            <Badge variant="outline">Live Telegram bot connected</Badge>
+            <Badge variant="outline">DeepSeek reasoning</Badge>
+            <Badge variant="outline">Exa technical sources</Badge>
+            <Badge variant="outline">Context preserved</Badge>
           </div>
 
           <div className="mt-9 flex gap-3">

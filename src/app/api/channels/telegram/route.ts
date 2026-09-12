@@ -21,16 +21,24 @@ type TelegramUpdate = {
 function languageFromTelegram(code: string | undefined): SupportedLanguage {
   const language = code?.toLowerCase() ?? "";
   if (language.startsWith("fr")) return "fr";
+  if (language.startsWith("bm")) return "bm";
   if (language.startsWith("zh")) return "zh";
   return "en";
 }
 
 async function getTelegramImage(fileId: string, token: string): Promise<string | undefined> {
-  const fileResponse = await fetch(`https://api.telegram.org/bot${token}/getFile`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ file_id: fileId }),
-  });
+  let fileResponse: Response;
+  try {
+    fileResponse = await fetch(`https://api.telegram.org/bot${token}/getFile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file_id: fileId }),
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    console.warn("Telegram image lookup failed.", error);
+    return undefined;
+  }
   const filePayload = (await fileResponse.json()) as {
     ok?: boolean;
     result?: { file_path?: string };
@@ -39,9 +47,16 @@ async function getTelegramImage(fileId: string, token: string): Promise<string |
     return undefined;
   }
 
-  const download = await fetch(
-    `https://api.telegram.org/file/bot${token}/${filePayload.result.file_path}`,
-  );
+  let download: Response;
+  try {
+    download = await fetch(
+      `https://api.telegram.org/file/bot${token}/${filePayload.result.file_path}`,
+      { signal: AbortSignal.timeout(10_000) },
+    );
+  } catch (error) {
+    console.warn("Telegram image download failed.", error);
+    return undefined;
+  }
   if (!download.ok || Number(download.headers.get("content-length") ?? 0) > 5 * 1024 * 1024) {
     return undefined;
   }
@@ -55,13 +70,18 @@ async function getTelegramImage(fileId: string, token: string): Promise<string |
 }
 
 async function sendTelegramMessage(chatId: number | string, text: string, token: string) {
-  const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text }),
-  });
-  if (!response.ok) {
-    console.error(`Telegram reply failed: ${response.status}`);
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) {
+      console.error(`Telegram reply failed: ${response.status}`);
+    }
+  } catch (error) {
+    console.error("Telegram reply request failed.", error);
   }
 }
 
@@ -76,7 +96,12 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid Telegram webhook secret." }, { status: 401 });
   }
 
-  const update = (await request.json()) as TelegramUpdate;
+  let update: TelegramUpdate;
+  try {
+    update = (await request.json()) as TelegramUpdate;
+  } catch {
+    return Response.json({ error: "Telegram update must be valid JSON." }, { status: 400 });
+  }
   const message = update.message;
   const chatId = message?.chat?.id;
   if (!message || chatId === undefined) {
@@ -94,14 +119,15 @@ export async function POST(request: Request) {
     return Response.json({ ok: true });
   }
 
-  const session = getOrCreateChannelSession("telegram", String(chatId));
+  const session = await getOrCreateChannelSession("telegram", String(chatId));
+  const language = languageFromTelegram(message.from?.language_code);
   const result = await processTechnicianMessage(
     session.id,
     text,
     imageDataUrl,
-    languageFromTelegram(message.from?.language_code),
+    language,
   );
-  await sendTelegramMessage(chatId, formatChannelResponse(result), token);
+  await sendTelegramMessage(chatId, formatChannelResponse(result, language), token);
 
   return Response.json({ ok: true });
 }
