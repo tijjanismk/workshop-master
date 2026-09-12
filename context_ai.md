@@ -213,3 +213,4 @@ The product should make it obvious that it is a workshop agent, not a generic ch
 - Strengthened the diagnostic prompt to prevent repeated intake questions and compacted the model context (recent facts, current test, and bounded source highlights) to keep later turns responsive after retrieval.
 - Added an accessible-language rule: short spoken-style messages, one observation per turn, and no unexplained jargon. The demo now includes simple Epson and garage scenarios; Exa retrieval recognizes common vehicle brands and OBD P0xxx codes.
 - Added a 12-second per-provider timeout with no automatic retries. Slow providers now fall back safely instead of leaving technicians waiting indefinitely.
+- Added `/whatsapp-demo`: a WhatsApp-style, in-app simulator using the same diagnostic engine and persistent session. It is explicitly a demo, not a live WhatsApp Business integration.
