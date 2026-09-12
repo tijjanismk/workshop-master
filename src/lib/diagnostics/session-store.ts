@@ -8,9 +8,14 @@ type SessionRow = {
   snapshot: string;
 };
 
-const databasePath =
-  process.env.WORKSHOP_MASTER_DB_PATH ??
-  join(process.cwd(), "data", "workshop-master.sqlite");
+// Vercel's deployment bundle is read-only. Its ephemeral /tmp directory is
+// writable for the lifetime of a serverless instance, while local development
+// keeps using the durable project data directory.
+const defaultDatabasePath = process.env.VERCEL
+  ? join("/tmp", "workshop-master.sqlite")
+  : join(process.cwd(), "data", "workshop-master.sqlite");
+
+const databasePath = process.env.WORKSHOP_MASTER_DB_PATH ?? defaultDatabasePath;
 
 let database: DatabaseSync | undefined;
 
