@@ -113,6 +113,33 @@ function RoleSelector({ role, language, onChange }: { role: UserRole; language: 
   return <div className="flex flex-wrap gap-2" aria-label="User role">{(["apprentice", "technician", "owner"] as UserRole[]).map((value) => <Button key={value} type="button" size="sm" variant={role === value ? "default" : "outline"} onClick={() => onChange(value)}>{labels[language][value]}</Button>)}</div>;
 }
 
+function SoundEvidence({ language, onApply }: { language: Language; onApply: (summary: string) => void }) {
+  const [recording, setRecording] = useState(false);
+  const [recorded, setRecorded] = useState(false);
+  const [context, setContext] = useState("idle");
+  const [sound, setSound] = useState("click");
+  const recorder = useRef<MediaRecorder | null>(null);
+  const copy: Record<Language, { title: string; start: string; stop: string; use: string; note: string; context: string; sound: string }> = {
+    en: { title: "Sound evidence", start: "Record 10 seconds", stop: "Stop recording", use: "Use sound context", note: "Audio stays on this device until an audio model is connected.", context: "When is the sound heard?", sound: "What does it sound like?" },
+    fr: { title: "Preuve sonore", start: "Enregistrer 10 secondes", stop: "Arrêter", use: "Utiliser le contexte sonore", note: "L’audio reste sur cet appareil tant qu’un modèle audio n’est pas connecté.", context: "À quel moment le son apparaît-il ?", sound: "À quoi ressemble le son ?" },
+    bm: { title: "Kan ka dɔnni", start: "Secondes 10 enregistrer", stop: "Dɔgɔ", use: "Kan ka contexte kɛ baara la", note: "Audio bɛ to nin appareil na fɔlɔ, audio modèle tɛ se sisan.", context: "Kan bɛ bɔ waati jumɛn na ?", sound: "Kan cogo di ?" },
+    zh: { title: "声音证据", start: "录制 10 秒", stop: "停止录音", use: "使用声音背景", note: "在接入音频模型前，音频仅保留在此设备。", context: "何时听到声音？", sound: "声音像什么？" },
+  };
+  const text = copy[language];
+  async function toggleRecording() {
+    if (recording) { recorder.current?.stop(); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const next = new MediaRecorder(stream);
+      next.onstop = () => { stream.getTracks().forEach((track) => track.stop()); setRecording(false); setRecorded(true); };
+      recorder.current = next; next.start(); setRecorded(false); setRecording(true);
+      window.setTimeout(() => { if (next.state === "recording") next.stop(); }, 10_000);
+    } catch { setRecorded(false); }
+  }
+  const options = { context: ["idle", "starting", "accelerating", "braking", "hot engine"], sound: ["click", "knock", "squeal", "grinding", "vibration", "no sound"] };
+  return <Card><CardHeader className="pb-3"><CardDescription>{text.title}</CardDescription><CardTitle className="mt-1 text-base">{text.note}</CardTitle></CardHeader><CardContent className="space-y-3"><label className="block text-sm text-zinc-700">{text.context}<select value={context} onChange={(event) => setContext(event.target.value)} className="mt-1 w-full rounded-md border border-zinc-300 bg-white p-2">{options.context.map((item) => <option key={item}>{item}</option>)}</select></label><label className="block text-sm text-zinc-700">{text.sound}<select value={sound} onChange={(event) => setSound(event.target.value)} className="mt-1 w-full rounded-md border border-zinc-300 bg-white p-2">{options.sound.map((item) => <option key={item}>{item}</option>)}</select></label><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={toggleRecording}>{recording ? text.stop : text.start}</Button><Button type="button" size="sm" disabled={!recorded} onClick={() => onApply(`Sound evidence recorded locally for about 10 seconds. Context: ${context}. Reported sound: ${sound}. Do not treat this as an audio diagnosis; use it to choose a safe next check.`)}>{text.use}</Button></div></CardContent></Card>;
+}
+
 function GuidedOrientation({ language, onApply }: { language: Language; onApply: (summary: string) => void }) {
   const [answers, setAnswers] = useState<GuidedAnswers>({ equipment: "", symptom: "", timing: "", restart: "", safety: "" });
   const text = orientationText[language];
@@ -336,6 +363,7 @@ export function WorkshopDashboard() {
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1.65fr)_20rem] lg:px-8">
         <section className="space-y-5">
           <RoleSelector role={role} language={language} onChange={setRole} />
+          <SoundEvidence language={language} onApply={setMessage} />
           {session ? <>{decision?.followUpQuestions?.length ? <DynamicQuestions key={decision.assistantMessage} decision={decision} language={language} onApply={setMessage} /> : <GuidedOrientation language={language} onApply={setMessage} />}</> : null}
           <DecisionLearning decision={decision} language={language} />
           <CustomerReply decision={decision} language={language} />

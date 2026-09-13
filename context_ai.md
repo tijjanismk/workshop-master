@@ -282,3 +282,4 @@ A judge or technician can see that the product accepts evidence, remembers it, s
 - Added workshop-operations intent switching: client collection, delays, price, payment, complaints, retention, and appointments pause repair questioning and receive direct customer-service guidance.
 - Added a ready-to-copy customer reply for workshop-operations requests. It is shown only in the dashboard and is never sent to Telegram or WhatsApp automatically.
 - Added explicit Apprentice, Technician, and Owner roles. The selected role is sent with each web diagnostic request so the model adapts the level of detail and operational advice without changing the underlying evidence.
+- Added local 10-second sound-evidence capture with operating context and perceived sound category. It feeds a safe textual observation into diagnosis; raw audio stays on the device until a dedicated audio model and reference library are integrated.
