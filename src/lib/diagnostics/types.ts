@@ -58,6 +58,8 @@ export type DiagnosticSession = {
 
 export type AgentDecision = {
   assistantMessage: string;
+  /** Up to three contextual questions generated from the first reported fault. */
+  followUpQuestions?: Array<{ question: string; choices: string[] }>;
   /** Short explanation of the mechanism behind the current diagnostic path. */
   technicalRecap?: string;
   /** Plain-language teaching note derived from the current evidence. */

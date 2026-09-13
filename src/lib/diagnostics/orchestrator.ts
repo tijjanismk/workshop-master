@@ -8,6 +8,10 @@ import type { AgentDecision, DiagnosticSession, DiagnosticTest, Hypothesis } fro
 
 const decisionSchema = z.object({
   assistantMessage: z.string().min(1),
+  followUpQuestions: z.array(z.object({
+    question: z.string().min(1).max(300),
+    choices: z.array(z.string().min(1).max(160)).min(2).max(5),
+  })).max(3),
   technicalRecap: z.string().min(1).max(1_200),
   learningBrief: z.string().min(1).max(900),
   communityLeads: z.array(z.object({
@@ -48,6 +52,7 @@ const decisionJsonSchema = {
   additionalProperties: false,
   required: [
     "assistantMessage",
+    "followUpQuestions",
     "technicalRecap",
     "learningBrief",
     "communityLeads",
@@ -61,6 +66,15 @@ const decisionJsonSchema = {
   ],
   properties: {
     assistantMessage: { type: "string" },
+    followUpQuestions: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["question", "choices"],
+        properties: { question: { type: "string" }, choices: { type: "array", items: { type: "string" } } },
+      },
+    },
     technicalRecap: { type: "string" },
     learningBrief: { type: "string" },
     communityLeads: {
@@ -148,6 +162,7 @@ Your general technical knowledge is not a retrieved source and must never be pre
 Update machine only from explicit technician evidence. Use an empty string for any unknown machine field.
 Before asking a question, inspect the full session: machine fields, symptoms, observations, currentTest, and completed tests.
 Never ask again for a manufacturer, model, error code, symptom, or test result already present anywhere in the session.
+Return followUpQuestions with zero to three questions only when their answers would change the next diagnostic decision. Each question needs 2–5 concise, mutually exclusive choices in the user's language. Base them on the first reported fault and current evidence; never return generic intake questions. Return [] when the next safe action is already clear.
 Treat the new technician statement as the result of the current test whenever a currentTest exists. Advance the diagnostic state instead of restarting intake.
 If a manufacturer, model, or error code appears in any technician observation, extract it into machine and use it in the next test.
 Only request missing information when it is necessary for the next lowest-risk decision. Do not use generic intake questions after the first turn.

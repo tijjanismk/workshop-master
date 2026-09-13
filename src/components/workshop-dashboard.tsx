@@ -100,6 +100,13 @@ const continuationText: Record<Language, { similar: string; similarEmpty: string
   zh: { similar: "此设备上的相似案例", similarEmpty: "保存已解决案例，以便相似问题再次出现时查找。", report: "使用清晰报告升级处理", reportDescription: "下载症状、证据、假设和当前安全操作，交给经验丰富的技术员。", download: "下载报告" },
 };
 
+const dynamicQuestionText: Record<Language, { title: string; description: string; choose: string; apply: string }> = {
+  en: { title: "Questions for this problem", description: "These questions come from your reported symptom.", choose: "Choose", apply: "Use these answers" },
+  fr: { title: "Questions pour ce problème", description: "Ces questions viennent du symptôme que tu as décrit.", choose: "Choisir", apply: "Utiliser ces réponses" },
+  bm: { title: "Ɲininkaliw nin gɛlɛnko kan", description: "Ɲininkaliw bɛ bɔ gɛlɛnko min i y'a fɔ na.", choose: "Sugandi", apply: "Nin jaabiw kɛ baara la" },
+  zh: { title: "针对该问题的问题", description: "这些问题来自你描述的症状。", choose: "请选择", apply: "使用这些答案" },
+};
+
 function GuidedOrientation({ language, onApply }: { language: Language; onApply: (summary: string) => void }) {
   const [answers, setAnswers] = useState<GuidedAnswers>({ equipment: "", symptom: "", timing: "", restart: "", safety: "" });
   const text = orientationText[language];
@@ -113,6 +120,15 @@ function GuidedOrientation({ language, onApply }: { language: Language; onApply:
   const summary = fields.map(({ key, label }) => answers[key] ? `${label}: ${text.options[answers[key] as Exclude<GuidedAnswer, "">]}` : "").filter(Boolean).join(". ");
 
   return <Card className="border-zinc-200 bg-white"><CardHeader className="pb-3"><CardDescription>{text.title}</CardDescription><CardTitle className="mt-1 text-lg">{text.description}</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-medium text-zinc-700">{fields[0].label}<select value={answers.equipment} onChange={(event) => setAnswers((value) => ({ ...value, equipment: event.target.value as GuidedAnswer }))} className="mt-1.5 h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-normal text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900"><option value="">{text.choose}</option>{fields[0].choices.map((choice) => <option key={choice} value={choice}>{text.options[choice as Exclude<GuidedAnswer, "">]}</option>)}</select></label><label className="text-sm font-medium text-zinc-700">{fields[1].label}<select value={answers.symptom} onChange={(event) => setAnswers((value) => ({ ...value, symptom: event.target.value as GuidedAnswer }))} className="mt-1.5 h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-normal text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900"><option value="">{text.choose}</option>{fields[1].choices.map((choice) => <option key={choice} value={choice}>{text.options[choice as Exclude<GuidedAnswer, "">]}</option>)}</select></label><label className="text-sm font-medium text-zinc-700">{fields[2].label}<select value={answers.timing} onChange={(event) => setAnswers((value) => ({ ...value, timing: event.target.value as GuidedAnswer }))} className="mt-1.5 h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-normal text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900"><option value="">{text.choose}</option>{fields[2].choices.map((choice) => <option key={choice} value={choice}>{text.options[choice as Exclude<GuidedAnswer, "">]}</option>)}</select></label><label className="text-sm font-medium text-zinc-700">{fields[3].label}<select value={answers.restart} onChange={(event) => setAnswers((value) => ({ ...value, restart: event.target.value as GuidedAnswer }))} className="mt-1.5 h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-normal text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900"><option value="">{text.choose}</option>{fields[3].choices.map((choice) => <option key={choice} value={choice}>{text.options[choice as Exclude<GuidedAnswer, "">]}</option>)}</select></label><label className="text-sm font-medium text-zinc-700 sm:col-span-2">{fields[4].label}<select value={answers.safety} onChange={(event) => setAnswers((value) => ({ ...value, safety: event.target.value as GuidedAnswer }))} className="mt-1.5 h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-normal text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900"><option value="">{text.choose}</option>{fields[4].choices.map((choice) => <option key={choice} value={choice}>{text.options[choice as Exclude<GuidedAnswer, "">]}</option>)}</select></label></div><Button type="button" size="sm" disabled={!summary} onClick={() => onApply(summary)}>{text.apply}</Button></CardContent></Card>;
+}
+
+function DynamicQuestions({ decision, language, onApply }: { decision?: AgentDecision; language: Language; onApply: (summary: string) => void }) {
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const questions = decision?.followUpQuestions ?? [];
+  const text = dynamicQuestionText[language];
+  if (!questions.length) return null;
+  const summary = questions.map((question, index) => answers[index] ? `${question.question}: ${answers[index]}` : "").filter(Boolean).join(". ");
+  return <Card className="border-zinc-300 bg-white"><CardHeader className="pb-3"><CardDescription>{text.title}</CardDescription><CardTitle className="mt-1 text-lg">{text.description}</CardTitle></CardHeader><CardContent className="space-y-3">{questions.map((question, index) => <label key={question.question} className="block text-sm font-medium text-zinc-700">{question.question}<select value={answers[index] ?? ""} onChange={(event) => setAnswers((value) => ({ ...value, [index]: event.target.value }))} className="mt-1.5 h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-normal text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900"><option value="">{text.choose}</option>{question.choices.map((choice) => <option key={choice} value={choice}>{choice}</option>)}</select></label>)}<Button type="button" size="sm" disabled={!summary} onClick={() => onApply(summary)}>{text.apply}</Button></CardContent></Card>;
 }
 
 function DecisionLearning({ decision, language }: { decision?: AgentDecision; language: Language }) {
@@ -304,7 +320,7 @@ export function WorkshopDashboard() {
 
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1.65fr)_20rem] lg:px-8">
         <section className="space-y-5">
-          {session ? <GuidedOrientation language={language} onApply={setMessage} /> : null}
+          {session ? <>{decision?.followUpQuestions?.length ? <DynamicQuestions key={decision.assistantMessage} decision={decision} language={language} onApply={setMessage} /> : <GuidedOrientation language={language} onApply={setMessage} />}</> : null}
           <DecisionLearning decision={decision} language={language} />
           <Card className="border-zinc-200 bg-white"><CardHeader className="border-b border-zinc-200"><div className="flex items-start justify-between gap-3"><div><CardDescription>{copy.workspace}</CardDescription><CardTitle className="mt-1 text-xl sm:text-2xl">{machineName}</CardTitle><p className="mt-2 text-sm text-zinc-500">{session?.machine.type || workspace.equipment} · {session ? statusLabel[language][session.status] : copy.active}</p></div><Badge variant="outline">{provider ?? "ready"}</Badge></div></CardHeader></Card>
 
