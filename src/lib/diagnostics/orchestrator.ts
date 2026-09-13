@@ -240,7 +240,8 @@ function buildVehicleTriageDecision(
   );
   const urgent = hasUrgentVehicleSignal(message);
   const vague = /\b(cassée?|casse|panne|broken|broke|not working|marche pas)\b/i.test(message);
-  if (!urgent && (!vague || technicianMessages.length > 1)) return undefined;
+  const motorcycleStall = /\b(moto|motorcycle)\b/i.test(message) && /\b(cale|calage|calee|stall|stalls)\b/i.test(message);
+  if (!urgent && !motorcycleStall && (!vague || technicianMessages.length > 1)) return undefined;
 
   if (urgent) {
     const copy = {
@@ -290,6 +291,16 @@ function buildVehicleTriageDecision(
       safetyWarnings: [copy.warning],
       status: "active",
     };
+  }
+
+  if (motorcycleStall) {
+    const copy = {
+      en: { message: "A motorcycle that stalls needs a few targeted observations before blaming a part.", title: "Clarify the stalling pattern", instruction: "Answer the short questions below before starting another test.", purpose: "Timing and restart behavior distinguish idle, fuel, ignition, and heat-related paths.", recap: "Stalling is a symptom, not proof of an oil fault. Timing and restart behavior narrow the cause safely.", lesson: "Check the symptom pattern before replacing a part.", questions: [{ question: "When does it stall?", choices: ["At idle", "When accelerating", "After warming up", "At any time"] }, { question: "Can it restart immediately?", choices: ["Yes", "Only after waiting", "No", "I have not tried"] }, { question: "Which sign is present?", choices: ["No warning or smoke", "Oil warning", "Fuel smell", "Smoke or overheating"] }] },
+      fr: { message: "Une moto qui cale demande quelques observations ciblées avant d’accuser une pièce.", title: "Préciser le type de calage", instruction: "Réponds aux courtes questions ci-dessous avant un autre test.", purpose: "Le moment du calage et le redémarrage distinguent ralenti, carburant, allumage et chaleur.", recap: "Un calage est un symptôme, pas une preuve que l’huile est en cause. Le moment et le redémarrage réduisent les causes de façon sûre.", lesson: "Observe le type de panne avant de remplacer une pièce.", questions: [{ question: "À quel moment la moto cale-t-elle ?", choices: ["Au ralenti", "À l’accélération", "Après avoir chauffé", "À tout moment"] }, { question: "Redémarre-t-elle immédiatement ?", choices: ["Oui", "Seulement après attendre", "Non", "Je n’ai pas essayé"] }, { question: "Quel signe est présent ?", choices: ["Aucun voyant ni fumée", "Voyant d’huile", "Odeur d’essence", "Fumée ou surchauffe"] }] },
+      bm: { message: "Moto min bɛ sekin ka kan ka ɲininkali dɔw jaabi ka fɔlɔ ka pièce dɔ tɔgɔ fɔ.", title: "Sekin cogo dɔn", instruction: "Ɲininkali surunw jaabi fɔlɔ ka test wɛrɛ kɛ.", purpose: "Waati ani daminɛ ɲɛgɛn bɛ ralenti, essence, allumage ani chaleur sira dɔn.", recap: "Sekin ye signe ye, a tɛ huile preuve ye. Waati ani daminɛ ɲɛgɛn bɛ sababu dɔw bɔ.", lesson: "Panne cogo kɔrɔbɔ ka fɔlɔ ka pièce changɛ.", questions: [{ question: "Moto bɛ sekin waati jumɛn na ?", choices: ["Ralenti na", "Accélération na", "A gɛlen kɔfɛ", "Waati bɛɛ"] }, { question: "A bɛ daminɛ ɲɛgɛn sisan wa ?", choices: ["Ɔwɔ", "Ka makɔnɔ dɔrɔn", "Ayi", "N ma a lajɛ"] }, { question: "Signe jumɛn bɛ yen ?", choices: ["Voyant ni fumée tɛ", "Huile voyant", "Essence nɔgɔ", "Fumée walima surchauffe"] }] },
+      zh: { message: "摩托车熄火需要先观察几个关键情况，不能立刻归咎于某个零件。", title: "明确熄火规律", instruction: "请先回答下面的简短问题，再进行其他测试。", purpose: "发生时间和能否重新启动可区分怠速、燃油、点火和高温问题。", recap: "熄火是症状，并不能证明是机油故障。发生时间和重启情况可安全缩小原因。", lesson: "更换零件前先观察故障规律。", questions: [{ question: "摩托车何时熄火？", choices: ["怠速时", "加速时", "热车后", "任何时候"] }, { question: "能立即重新启动吗？", choices: ["能", "需等待后才能", "不能", "尚未尝试"] }, { question: "出现了什么信号？", choices: ["无警告灯或冒烟", "机油警告灯", "燃油气味", "冒烟或过热"] }] },
+    }[language];
+    return { assistantMessage: copy.message, technicalRecap: copy.recap, learningBrief: copy.lesson, communityLeads: [], followUpQuestions: copy.questions, machine: { type: "motorcycle" }, observations: [], visualObservations: [], hypotheses: [], nextTest: { title: copy.title, instruction: copy.instruction, purpose: copy.purpose, risk: "low", requiresPowerOff: false }, safetyWarnings: [], status: "active" };
   }
 
   const copy = {
