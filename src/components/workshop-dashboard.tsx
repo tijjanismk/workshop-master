@@ -102,10 +102,10 @@ const continuationText: Record<Language, { similar: string; similarEmpty: string
 };
 
 const dynamicQuestionText: Record<Language, { title: string; description: string; choose: string; apply: string }> = {
-  en: { title: "Questions for this problem", description: "These questions come from your reported symptom.", choose: "Choose", apply: "Use these answers" },
-  fr: { title: "Questions pour ce problème", description: "Ces questions viennent du symptôme que tu as décrit.", choose: "Choisir", apply: "Utiliser ces réponses" },
-  bm: { title: "Ɲininkaliw nin gɛlɛnko kan", description: "Ɲininkaliw bɛ bɔ gɛlɛnko min i y'a fɔ na.", choose: "Sugandi", apply: "Nin jaabiw kɛ baara la" },
-  zh: { title: "针对该问题的问题", description: "这些问题来自你描述的症状。", choose: "请选择", apply: "使用这些答案" },
+  en: { title: "Questions for the initial problem", description: "Up to 10 equipment-specific questions, anchored to your first reported symptom.", choose: "Choose", apply: "Use these answers" },
+  fr: { title: "Questions liées au premier problème", description: "Jusqu’à 10 questions adaptées à l’équipement et au premier symptôme décrit.", choose: "Choisir", apply: "Utiliser ces réponses" },
+  bm: { title: "Ɲininkaliw gɛlɛnko fɔlɔ kan", description: "Ɲininkali 10 ka se ka kɛ, minnu bɛ ɲɛsin équipement ani gɛlɛnko fɔlɔ ma.", choose: "Sugandi", apply: "Nin jaabiw kɛ baara la" },
+  zh: { title: "围绕首个问题的提问", description: "最多 10 个与设备和首个症状相关的问题。", choose: "请选择", apply: "使用这些答案" },
 };
 
 function RoleSelector({ role, language, onChange }: { role: UserRole; language: Language; onChange: (role: UserRole) => void }) {
