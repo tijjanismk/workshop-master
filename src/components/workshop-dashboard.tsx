@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { AgentDecision, DiagnosticSession } from "@/lib/diagnostics/types";
 
 type Language = "en" | "fr" | "bm" | "zh";
+type UserRole = "apprentice" | "technician" | "owner";
 type Provider = "deepseek" | "openrouter" | "safe-fallback";
 type Recognition = {
   lang: string;
@@ -106,6 +107,11 @@ const dynamicQuestionText: Record<Language, { title: string; description: string
   bm: { title: "Ɲininkaliw nin gɛlɛnko kan", description: "Ɲininkaliw bɛ bɔ gɛlɛnko min i y'a fɔ na.", choose: "Sugandi", apply: "Nin jaabiw kɛ baara la" },
   zh: { title: "针对该问题的问题", description: "这些问题来自你描述的症状。", choose: "请选择", apply: "使用这些答案" },
 };
+
+function RoleSelector({ role, language, onChange }: { role: UserRole; language: Language; onChange: (role: UserRole) => void }) {
+  const labels: Record<Language, Record<UserRole, string>> = { en: { apprentice: "Apprentice", technician: "Technician", owner: "Owner" }, fr: { apprentice: "Apprenti", technician: "Technicien", owner: "Patron" }, bm: { apprentice: "Kalanfa", technician: "Technicien", owner: "Patron" }, zh: { apprentice: "学徒", technician: "技术员", owner: "老板" } };
+  return <div className="flex flex-wrap gap-2" aria-label="User role">{(["apprentice", "technician", "owner"] as UserRole[]).map((value) => <Button key={value} type="button" size="sm" variant={role === value ? "default" : "outline"} onClick={() => onChange(value)}>{labels[language][value]}</Button>)}</div>;
+}
 
 function GuidedOrientation({ language, onApply }: { language: Language; onApply: (summary: string) => void }) {
   const [answers, setAnswers] = useState<GuidedAnswers>({ equipment: "", symptom: "", timing: "", restart: "", safety: "" });
@@ -212,6 +218,7 @@ function EscalationReport({ session, decision, language }: { session?: Diagnosti
 
 export function WorkshopDashboard() {
   const [language, setLanguage] = useState<Language>("fr");
+  const [role, setRole] = useState<UserRole>("technician");
   const [message, setMessage] = useState("");
   const [image, setImage] = useState<string>();
   const [imageName, setImageName] = useState<string>();
@@ -290,7 +297,7 @@ export function WorkshopDashboard() {
       const response = await fetch("/api/diagnostics", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, sessionId, sessionSnapshot: session, imageDataUrl: image, language }),
+        body: JSON.stringify({ message: text, sessionId, sessionSnapshot: session, imageDataUrl: image, language, role }),
       });
       const result = await response.json() as ResponsePayload | { error: string };
       if (!response.ok || !("session" in result)) throw new Error("error" in result ? result.error : copy.error);
@@ -328,6 +335,7 @@ export function WorkshopDashboard() {
 
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1.65fr)_20rem] lg:px-8">
         <section className="space-y-5">
+          <RoleSelector role={role} language={language} onChange={setRole} />
           {session ? <>{decision?.followUpQuestions?.length ? <DynamicQuestions key={decision.assistantMessage} decision={decision} language={language} onApply={setMessage} /> : <GuidedOrientation language={language} onApply={setMessage} />}</> : null}
           <DecisionLearning decision={decision} language={language} />
           <CustomerReply decision={decision} language={language} />

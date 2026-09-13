@@ -57,6 +57,7 @@ const requestSchema = z.object({
   sessionId: z.string().uuid().optional(),
   message: z.string().trim().min(1).max(2_000),
   language: z.enum(["en", "fr", "bm", "zh"]).default("en"),
+  role: z.enum(["apprentice", "technician", "owner"]).default("technician"),
   imageDataUrl: z
     .string()
     .max(7_000_000)
@@ -91,6 +92,7 @@ export async function POST(request: Request) {
       parsed.data.imageDataUrl,
       parsed.data.language,
       parsed.data.sessionSnapshot,
+      parsed.data.role,
     );
     return Response.json(result, { status: 200 });
   } catch (error) {

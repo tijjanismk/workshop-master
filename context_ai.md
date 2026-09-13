@@ -281,3 +281,4 @@ A judge or technician can see that the product accepts evidence, remembers it, s
 - Added a deterministic motorcycle-stall intake: it asks about timing, restart behavior, and safety signals before proposing a part or physical test.
 - Added workshop-operations intent switching: client collection, delays, price, payment, complaints, retention, and appointments pause repair questioning and receive direct customer-service guidance.
 - Added a ready-to-copy customer reply for workshop-operations requests. It is shown only in the dashboard and is never sent to Telegram or WhatsApp automatically.
+- Added explicit Apprentice, Technician, and Owner roles. The selected role is sent with each web diagnostic request so the model adapts the level of detail and operational advice without changing the underlying evidence.

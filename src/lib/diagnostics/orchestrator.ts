@@ -554,8 +554,10 @@ async function requestModelDecision(
   message: string,
   imageDataUrl?: string,
   language: SupportedLanguage = "en",
+  role: "apprentice" | "technician" | "owner" = "technician",
 ): Promise<ProviderDecision> {
-  const prompt = `Diagnostic session:\n${JSON.stringify(buildModelContext(session))}\n\nNew technician statement:\n${message}\n\nImage attached: ${Boolean(imageDataUrl)}`;
+  const roleGuidance = role === "apprentice" ? "The user is an apprentice: explain the reason, use simple steps, and say when to ask a supervisor." : role === "owner" ? "The user owns the workshop: include customer trust, time, price, delegation, and how to coach an apprentice when relevant." : "The user is a technician: use concise technical language and practical checks.";
+  const prompt = `Diagnostic session:\n${JSON.stringify(buildModelContext(session))}\n\nUser role: ${role}. ${roleGuidance}\n\nNew technician statement:\n${message}\n\nImage attached: ${Boolean(imageDataUrl)}`;
 
   if (process.env.DEEPSEEK_API_KEY) {
     try {
@@ -738,6 +740,7 @@ export async function processTechnicianMessage(
   imageDataUrl?: string,
   language: SupportedLanguage = "en",
   sessionSnapshot?: DiagnosticSession,
+  role: "apprentice" | "technician" | "owner" = "technician",
 ): Promise<ProcessTurnResult> {
   const persistedSession = sessionId ? await getSession(sessionId) : undefined;
   const session =
@@ -783,7 +786,7 @@ export async function processTechnicianMessage(
   }
 
   try {
-    const result = await requestModelDecision(session, message, imageDataUrl, language);
+    const result = await requestModelDecision(session, message, imageDataUrl, language, role);
     applyDecision(session, result.decision, language);
     await saveSession(session);
 
