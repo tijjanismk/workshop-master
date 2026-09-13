@@ -137,6 +137,14 @@ function DecisionLearning({ decision, language }: { decision?: AgentDecision; la
   return <div className="grid gap-4 md:grid-cols-2">{decision.technicalRecap && <Card><CardHeader className="pb-2"><CardDescription>{text.recap}</CardDescription></CardHeader><CardContent><p className="text-sm leading-6 text-zinc-700">{decision.technicalRecap}</p></CardContent></Card>}{decision.learningBrief && <Card><CardHeader className="pb-2"><CardDescription>{text.lesson}</CardDescription></CardHeader><CardContent><p className="text-sm leading-6 text-zinc-700">{decision.learningBrief}</p></CardContent></Card>}{decision.communityLeads?.length ? <Card className="border-amber-300/60 md:col-span-2"><CardHeader className="pb-2"><CardDescription>{text.community}</CardDescription></CardHeader><CardContent className="space-y-3">{decision.communityLeads.map((lead) => <div key={`${lead.sourceTitle}-${lead.insight}`} className="border-l-2 border-amber-400 pl-3"><p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{text.report} · {lead.sourceTitle}</p><p className="mt-1 text-sm leading-6 text-zinc-800">{lead.insight}</p><p className="mt-1 text-sm leading-6 text-zinc-600"><span className="font-medium text-zinc-800">{text.confirm}:</span> {lead.safeConfirmation}</p></div>)}</CardContent></Card> : null}</div>;
 }
 
+function CustomerReply({ decision, language }: { decision?: AgentDecision; language: Language }) {
+  const customerReply = decision?.customerReply;
+  if (!customerReply) return null;
+  const title: Record<Language, string> = { en: "Message ready for the customer", fr: "Message prêt pour le client", bm: "Client ka message labɛnna", zh: "可直接发送给客户的消息" };
+  const copy: Record<Language, string> = { en: "Copy", fr: "Copier", bm: "Copier", zh: "复制" };
+  return <Card className="border-amber-300/60 bg-amber-50"><CardHeader className="pb-2"><CardDescription>{title[language]}</CardDescription></CardHeader><CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><p className="text-sm leading-6 text-zinc-800">“{customerReply}”</p><Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(customerReply)}>{copy[language]}</Button></CardContent></Card>;
+}
+
 function LearningNotebook({ decision, session, language }: { decision?: AgentDecision; session?: DiagnosticSession; language: Language }) {
   const [entries, setEntries] = useState<LearningEntry[]>(() => {
     if (typeof window === "undefined") return [];
@@ -322,6 +330,7 @@ export function WorkshopDashboard() {
         <section className="space-y-5">
           {session ? <>{decision?.followUpQuestions?.length ? <DynamicQuestions key={decision.assistantMessage} decision={decision} language={language} onApply={setMessage} /> : <GuidedOrientation language={language} onApply={setMessage} />}</> : null}
           <DecisionLearning decision={decision} language={language} />
+          <CustomerReply decision={decision} language={language} />
           <Card className="border-zinc-200 bg-white"><CardHeader className="border-b border-zinc-200"><div className="flex items-start justify-between gap-3"><div><CardDescription>{copy.workspace}</CardDescription><CardTitle className="mt-1 text-xl sm:text-2xl">{machineName}</CardTitle><p className="mt-2 text-sm text-zinc-500">{session?.machine.type || workspace.equipment} · {session ? statusLabel[language][session.status] : copy.active}</p></div><Badge variant="outline">{provider ?? "ready"}</Badge></div></CardHeader></Card>
 
           <Card className="border-zinc-300 bg-white shadow-lg shadow-zinc-200/30"><CardHeader><div className="flex items-start justify-between gap-4"><div><CardDescription className="font-semibold uppercase tracking-[0.16em] text-zinc-600">{copy.next}</CardDescription><CardTitle className="mt-2 text-xl">{currentTest?.title ?? copy.noTest}</CardTitle></div>{currentTest && <Badge variant={severity}>{statusLabel[language][currentTest.risk]}</Badge>}</div></CardHeader><CardContent className="space-y-4"><p className="text-base leading-7 text-zinc-950">{currentTest?.instruction ?? workspace.firstPrompt}</p>{currentTest?.purpose && <p className="border-l-2 border-zinc-300 pl-3 text-sm leading-6 text-zinc-500">{currentTest.purpose}</p>}{currentTest?.requiresPowerOff && <Alert className="border-amber-400/30 bg-amber-400/10 text-amber-100"><ShieldAlert className="mb-2 h-4 w-4" /><AlertTitle>{copy.safety}</AlertTitle><AlertDescription>Turn off and unplug the equipment before this test.</AlertDescription></Alert>}</CardContent></Card>
