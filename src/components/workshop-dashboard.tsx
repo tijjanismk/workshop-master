@@ -304,7 +304,7 @@ export function WorkshopDashboard() {
 
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1.65fr)_20rem] lg:px-8">
         <section className="space-y-5">
-          <GuidedOrientation language={language} onApply={setMessage} />
+          {session ? <GuidedOrientation language={language} onApply={setMessage} /> : null}
           <DecisionLearning decision={decision} language={language} />
           <Card className="border-zinc-200 bg-white"><CardHeader className="border-b border-zinc-200"><div className="flex items-start justify-between gap-3"><div><CardDescription>{copy.workspace}</CardDescription><CardTitle className="mt-1 text-xl sm:text-2xl">{machineName}</CardTitle><p className="mt-2 text-sm text-zinc-500">{session?.machine.type || workspace.equipment} · {session ? statusLabel[language][session.status] : copy.active}</p></div><Badge variant="outline">{provider ?? "ready"}</Badge></div></CardHeader></Card>
 
