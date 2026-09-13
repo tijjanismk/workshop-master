@@ -273,3 +273,6 @@ A judge or technician can see that the product accepts evidence, remembers it, s
 - Added the transparent processing message explaining that the AI is reviewing context, sources, and safety.
 - Replaced HeroUI with local shadcn/ui primitives and rebuilt the main workspace and Telegram demo without HeroUI imports.
 - Replaced the dark-blue visual palette with a minimal light neutral palette (off-white, white, zinc/graphite, and amber safety states).
+- Added a multilingual guided-orientation form with selectable equipment, symptom, timing, restart, and safety answers. Its summary is passed into the existing diagnostic flow as technician context.
+- Added per-turn technical recaps, practical learning briefs, and explicitly-labelled community leads with safe confirmation steps. Community discussion is used for orientation only, never as proof; vehicle triage now recognizes negated danger signs such as "pas de fumée".
+- Added a browser-local learning notebook so an autodidact can save up to twelve useful diagnostic cases and their lesson for later review.

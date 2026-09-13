@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { formatChannelResponse } from "@/lib/channels/format-response";
 import { processTechnicianMessage } from "@/lib/diagnostics/orchestrator";
 
 export const runtime = "nodejs";
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
 
   return Response.json({
     sessionId: result.session.id,
-    reply: result.decision.assistantMessage,
+    reply: formatChannelResponse(result, payload.data.language),
     nextTest: result.decision.nextTest?.instruction,
     provider: result.provider,
   });

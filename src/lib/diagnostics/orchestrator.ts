@@ -8,6 +8,13 @@ import type { AgentDecision, DiagnosticSession, DiagnosticTest, Hypothesis } fro
 
 const decisionSchema = z.object({
   assistantMessage: z.string().min(1),
+  technicalRecap: z.string().min(1).max(1_200),
+  learningBrief: z.string().min(1).max(900),
+  communityLeads: z.array(z.object({
+    sourceTitle: z.string().min(1).max(500),
+    insight: z.string().min(1).max(900),
+    safeConfirmation: z.string().min(1).max(900),
+  })).max(3),
   machine: z.object({
     manufacturer: z.string().optional(),
     model: z.string().optional(),
@@ -41,6 +48,9 @@ const decisionJsonSchema = {
   additionalProperties: false,
   required: [
     "assistantMessage",
+    "technicalRecap",
+    "learningBrief",
+    "communityLeads",
     "machine",
     "observations",
     "visualObservations",
@@ -51,6 +61,21 @@ const decisionJsonSchema = {
   ],
   properties: {
     assistantMessage: { type: "string" },
+    technicalRecap: { type: "string" },
+    learningBrief: { type: "string" },
+    communityLeads: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["sourceTitle", "insight", "safeConfirmation"],
+        properties: {
+          sourceTitle: { type: "string" },
+          insight: { type: "string" },
+          safeConfirmation: { type: "string" },
+        },
+      },
+    },
     machine: {
       type: "object",
       additionalProperties: false,
@@ -116,6 +141,9 @@ If the technician reports brake/steering loss, smoke, fuel smell/leak, severe ov
 Never state a hypothesis as confirmed. Do not invent a diagnosis.
 Use the evidence routine in this order: the active session context and technician observations; manufacturer documentation; clearly-labelled forum/community reports; clearly-labelled YouTube/video demonstrations; then your general technical knowledge.
 Treat retrievedSources in the session as external evidence, not as technician observations. Use sourceType to identify its reliability: manufacturer is preferred; community and video are leads that require a safe confirmation.
+Return technicalRecap as a 2–4 sentence explanation of the mechanism behind the present diagnostic path; distinguish what is known from what is only likely.
+Return learningBrief as one short, practical lesson that helps the technician understand the equipment or symptom without repeating the next action.
+Return communityLeads only for retrievedSources whose sourceType is community. Each lead must use the exact retrieved source title, call its insight a community report rather than a fact, and give one low-risk confirmation. Return [] when no relevant community source exists.
 Your general technical knowledge is not a retrieved source and must never be presented as a manual, a forum finding, or proof. State it as a hypothesis when relevant.
 Update machine only from explicit technician evidence. Use an empty string for any unknown machine field.
 Before asking a question, inspect the full session: machine fields, symptoms, observations, currentTest, and completed tests.
@@ -158,9 +186,31 @@ function isVehicleReport(message: string) {
 }
 
 function hasUrgentVehicleSignal(message: string) {
-  return /\b(frein|brake|direction|steering|fumée|fumee|smoke|odeur d['’]?essence|fuel smell|fuite d['’]?essence|fuel leak|surchauff|overheat|voyant rouge|red warning)\b/i.test(
-    message,
+  // A technician may explicitly rule out an urgent symptom ("pas de fumée").
+  // Strip these negative statements before looking for a positive danger signal.
+  const positiveOnly = message.replace(
+    /\b(?:pas de|sans|aucune?|no|without)\s+(?:fumée|fumee|smoke|odeur d['’]?essence|fuel smell|fuite d['’]?essence|fuel leak|surchauffe?|overheating|voyant rouge|red warning)\b/gi,
+    "",
   );
+  return /\b(frein|brake|direction|steering|fumée|fumee|smoke|odeur d['’]?essence|fuel smell|fuite d['’]?essence|fuel leak|surchauff|overheat|voyant rouge|red warning)\b/i.test(positiveOnly);
+}
+
+function vehicleTriageLearning(language: SupportedLanguage, urgent: boolean) {
+  const copy = {
+    en: urgent
+      ? { technicalRecap: "A potential safety symptom takes priority over finding the failed part. The vehicle must be secured before a normal diagnosis can continue.", learningBrief: "In vehicle diagnosis, separate immediate danger from the underlying fault before testing anything." }
+      : { technicalRecap: "A vehicle fault can involve fuel, air, ignition, engine control, or a non-engine system. The main symptom identifies which area to examine first without guessing.", learningBrief: "A reported breakdown is not yet a diagnosis: the main symptom selects the safe diagnostic path." },
+    fr: urgent
+      ? { technicalRecap: "Un signe de danger possible passe avant la recherche de la pièce en cause. Le véhicule doit être sécurisé avant de poursuivre un diagnostic normal.", learningBrief: "En diagnostic automobile, il faut d’abord séparer le danger immédiat de la panne à trouver." }
+      : { technicalRecap: "Une panne de véhicule peut concerner le carburant, l’air, l’allumage, la gestion du moteur ou une zone hors moteur. Le symptôme principal indique quelle zone examiner d’abord, sans deviner.", learningBrief: "Une panne signalée n’est pas encore un diagnostic : le symptôme principal permet de choisir une piste sûre." },
+    bm: urgent
+      ? { technicalRecap: "Juguya ka signe bɛ se ka kɛ fɔlɔ ka taa pièce min gɛlɛn bɔ. Voiture ka kan ka kisɛ fɔlɔ ka sɛgɛsɛgɛli tɔ bɛ se ka taa ɲɛ.", learningBrief: "Voiture sɛgɛsɛgɛli na, juguya dɔn fɔlɔ ka fɔlɔ ka panne ɲini." }
+      : { technicalRecap: "Véhicule gɛlɛnko bɛ se ka bɔ essence, hawaa, allumage, moteur gestion walima fɛn wɛrɛ na. Gɛlɛnko ba bɛ se ka yɔrɔ min ka kan ka sɛgɛsɛgɛ fɔlɔ dɔn.", learningBrief: "Panne fɔli tɛ diagnostic ye sisan : gɛlɛnko ba bɛ sira kisɛ sugandi." },
+    zh: urgent
+      ? { technicalRecap: "潜在的安全症状优先于查找故障部件。必须先确保车辆安全，才能继续常规诊断。", learningBrief: "车辆诊断时，应先区分即时危险和需要排查的故障。" }
+      : { technicalRecap: "车辆故障可能涉及燃油、空气、点火、发动机控制或非发动机系统。主要症状决定先检查哪个区域，而不是凭猜测判断。", learningBrief: "报告故障并不等于完成诊断；主要症状会指向安全的诊断路径。" },
+  }[language];
+  return { ...copy, communityLeads: [] };
 }
 
 function buildVehicleTriageDecision(
@@ -210,6 +260,7 @@ function buildVehicleTriageDecision(
     }[language];
     return {
       assistantMessage: copy.message,
+      ...vehicleTriageLearning(language, true),
       machine: { type: "vehicle" },
       observations: [],
       visualObservations: [],
@@ -228,13 +279,13 @@ function buildVehicleTriageDecision(
 
   const copy = {
     en: {
-      message: "I can help, but “the car is broken” does not yet identify a safe diagnostic path. Tell me the main symptom first.",
+      message: "I can help, but a reported vehicle fault does not yet identify a safe diagnostic path. Tell me the main symptom first.",
       title: "Identify the vehicle symptom",
       instruction: "Choose one: it will not start; it starts then stops; unusual sound; warning light; overheating; braking/steering issue; or another clear symptom.",
       purpose: "This selects a safe diagnostic path without guessing or asking you to start the vehicle.",
     },
     fr: {
-      message: "Je peux t’aider, mais « la voiture est cassée » ne permet pas encore de choisir un diagnostic sûr. Donne-moi d’abord le symptôme principal.",
+      message: "Je peux t’aider, mais une panne de véhicule signalée ne permet pas encore de choisir un diagnostic sûr. Donne-moi d’abord le symptôme principal.",
       title: "Identifier le symptôme du véhicule",
       instruction: "Choisis un cas : elle ne démarre pas ; elle démarre puis cale ; bruit inhabituel ; voyant ; surchauffe ; problème de frein/direction ; ou un autre symptôme clair.",
       purpose: "Choisir une piste sûre sans deviner ni te demander de démarrer le véhicule.",
@@ -254,6 +305,7 @@ function buildVehicleTriageDecision(
   }[language];
   return {
     assistantMessage: copy.message,
+    ...vehicleTriageLearning(language, false),
     machine: { type: "vehicle" },
     observations: [],
     visualObservations: [],

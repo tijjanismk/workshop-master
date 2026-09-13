@@ -58,6 +58,12 @@ export type DiagnosticSession = {
 
 export type AgentDecision = {
   assistantMessage: string;
+  /** Short explanation of the mechanism behind the current diagnostic path. */
+  technicalRecap?: string;
+  /** Plain-language teaching note derived from the current evidence. */
+  learningBrief?: string;
+  /** Community reports are leads, never proof; each one includes a safe confirmation. */
+  communityLeads?: Array<{ sourceTitle: string; insight: string; safeConfirmation: string }>;
   machine: Machine;
   observations: string[];
   visualObservations: string[];

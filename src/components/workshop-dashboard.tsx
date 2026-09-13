@@ -36,6 +36,9 @@ type Recognition = {
 };
 type RecognitionConstructor = new () => Recognition;
 type ResponsePayload = { session: DiagnosticSession; decision: AgentDecision; provider: Provider };
+type LearningEntry = { id: string; createdAt: string; machine: string; recap: string; lesson: string; status: DiagnosticSession["status"] };
+
+const learningNotebookKey = "workshop-master-learning-notebook";
 
 const speechLocale: Record<Language, string> = { en: "en-US", fr: "fr-FR", bm: "bm-ML", zh: "zh-CN" };
 const examples: Record<Language, string> = {
@@ -63,6 +66,82 @@ const workspaceText: Record<Language, { equipment: string; firstPrompt: string; 
   bm: { equipment: "Masinɲɛ", firstPrompt: "Masinɲɛ, gɛlɛnko ba ani erreur code walima signe min bɛ ye fɔ.", report: "Fɛn min i y'a ye fɔ", manufacturer: "Masin kɛla", model: "Modele", hypotheses: "Miiri bɛ yen", timeline: "Dɔnni kɔrɔbɔ", timelineEmpty: "Dɔnni bɛna bɔ yan sɛgɛsɛgɛli kɔfɛ.", sourcesEmpty: "Sebɛn bɛna bɔ ni modele walima erreur code ka ɲɛnabɔ." },
   zh: { equipment: "设备", firstPrompt: "请提供设备、主要症状及任何错误代码或可见信号。", report: "描述你的观察结果", manufacturer: "制造商", model: "型号", hypotheses: "当前假设", timeline: "证据时间线", timelineEmpty: "诊断过程中证据会显示在这里。", sourcesEmpty: "当型号或错误代码需要验证时，来源会显示在这里。" },
 };
+
+type GuidedAnswer = "" | "cold" | "hot" | "after-use" | "idle" | "won't restart" | "restarts" | "warning" | "oil-warning" | "smoke" | "fuel-smell" | "none" | "unknown" | "motorcycle" | "car" | "machine" | "printer";
+type GuidedAnswers = { equipment: GuidedAnswer; symptom: GuidedAnswer; timing: GuidedAnswer; restart: GuidedAnswer; safety: GuidedAnswer };
+
+const orientationText: Record<Language, {
+  title: string; description: string; equipment: string; symptom: string; timing: string; restart: string; safety: string; choose: string; apply: string; options: Record<Exclude<GuidedAnswer, "">, string>;
+}> = {
+  en: { title: "Guided questions", description: "Answer only what you know. These choices orient the first diagnosis.", equipment: "Equipment", symptom: "What happens?", timing: "When does it happen?", restart: "Can it restart?", safety: "Any safety sign?", choose: "Choose", apply: "Use these answers", options: { motorcycle: "Motorcycle", car: "Car", machine: "Machine", printer: "Printer", idle: "It stalls at idle", "won't restart": "It does not restart", restarts: "It restarts", cold: "When cold", hot: "When hot", "after-use": "After some use", warning: "Warning light", "oil-warning": "Oil warning", smoke: "Smoke or burning smell", "fuel-smell": "Fuel smell or leak", none: "None noticed", unknown: "I do not know" } },
+  fr: { title: "Questions guidées", description: "Réponds seulement à ce que tu sais. Ces choix orientent le premier diagnostic.", equipment: "Équipement", symptom: "Que se passe-t-il ?", timing: "À quel moment ?", restart: "Peut-elle redémarrer ?", safety: "Signe de sécurité ?", choose: "Choisir", apply: "Utiliser ces réponses", options: { motorcycle: "Moto", car: "Voiture", machine: "Machine", printer: "Imprimante", idle: "Elle cale au ralenti", "won't restart": "Elle ne redémarre pas", restarts: "Elle redémarre", cold: "À froid", hot: "À chaud", "after-use": "Après quelques minutes", warning: "Voyant allumé", "oil-warning": "Voyant d'huile", smoke: "Fumée ou odeur de brûlé", "fuel-smell": "Odeur ou fuite d'essence", none: "Rien remarqué", unknown: "Je ne sais pas" } },
+  bm: { title: "Ɲininkali min bɛ ɲɛsin", description: "Fɛn min i b'a dɔn dɔrɔn fɔ. Sugandiliw bɛ daminɛ sɛgɛsɛgɛli ɲɛnabɔ.", equipment: "Masinɲɛ", symptom: "Mun bɛ kɛ ?", timing: "Waati jumɛn na ?", restart: "A bɛ se ka daminɛ ɲɛgɛn ?", safety: "Kisɛ ka sɛbɛn bɛ yen wa ?", choose: "Sugandi", apply: "Nin jaabiw kɛ baara la", options: { motorcycle: "Moto", car: "Wotoro", machine: "Masin", printer: "Imprimante", idle: "A bɛ sekin ralenti na", "won't restart": "A tɛ daminɛ ɲɛgɛn", restarts: "A bɛ daminɛ ɲɛgɛn", cold: "N'a nɔgɔlen", hot: "N'a gɛlen", "after-use": "Dɔɔnin baara kɔfɛ", warning: "Voyant bɛ ye", "oil-warning": "Huile voyant", smoke: "Dunun walima tulu nɔgɔ", "fuel-smell": "Essence nɔgɔ walima bɔli", none: "Foyi ma ye", unknown: "N t'a dɔn" } },
+  zh: { title: "引导问题", description: "只回答你知道的内容。这些选择会帮助 AI 确定首次诊断方向。", equipment: "设备", symptom: "发生了什么？", timing: "什么时候发生？", restart: "能重新启动吗？", safety: "有安全警示吗？", choose: "请选择", apply: "使用这些答案", options: { motorcycle: "摩托车", car: "汽车", machine: "机器", printer: "打印机", idle: "怠速时熄火", "won't restart": "无法重新启动", restarts: "可以重新启动", cold: "冷车时", hot: "热车时", "after-use": "使用一段时间后", warning: "警告灯亮", "oil-warning": "机油警告灯", smoke: "冒烟或烧焦味", "fuel-smell": "汽油味或泄漏", none: "未发现", unknown: "不知道" } },
+};
+
+const learningText: Record<Language, { recap: string; lesson: string; community: string; report: string; confirm: string }> = {
+  en: { recap: "Technical recap", lesson: "Learn while diagnosing", community: "Community leads", report: "Community report", confirm: "Safe way to check" },
+  fr: { recap: "Récapitulatif technique", lesson: "À retenir", community: "Pistes issues de la communauté", report: "Retour de communauté", confirm: "Vérification sûre" },
+  bm: { recap: "Tekiniki kɔrɔbɔ", lesson: "Dɔnni min ka taa ɲɛ", community: "Jama ka sira fɔliw", report: "Jama ka fɔli", confirm: "Kɔrɔbɔ kisɛ" },
+  zh: { recap: "技术小结", lesson: "诊断中的学习要点", community: "社区线索", report: "社区经验", confirm: "安全确认方法" },
+};
+
+const notebookText: Record<Language, { title: string; description: string; save: string; saved: string; empty: string; clear: string }> = {
+  en: { title: "My learning notebook", description: "Save useful cases and lessons on this device.", save: "Save this case", saved: "Saved cases", empty: "Your useful cases will appear here.", clear: "Clear" },
+  fr: { title: "Mon carnet d’apprentissage", description: "Enregistre les cas et leçons utiles sur cet appareil.", save: "Enregistrer ce cas", saved: "Cas enregistrés", empty: "Tes cas utiles apparaîtront ici.", clear: "Effacer" },
+  bm: { title: "N ka dɔnni cahier", description: "Cas ani dɔnni nafama mara nin appareil na.", save: "Nin cas mara", saved: "Cas minnu mara", empty: "I ka cas nafamaw bɛna bɔ yan.", clear: "A bɔ" },
+  zh: { title: "我的学习笔记", description: "在此设备上保存有用案例和经验。", save: "保存此案例", saved: "已保存案例", empty: "有用案例将显示在这里。", clear: "清除" },
+};
+
+function GuidedOrientation({ language, onApply }: { language: Language; onApply: (summary: string) => void }) {
+  const [answers, setAnswers] = useState<GuidedAnswers>({ equipment: "", symptom: "", timing: "", restart: "", safety: "" });
+  const text = orientationText[language];
+  const fields: Array<{ key: keyof GuidedAnswers; label: string; choices: GuidedAnswer[] }> = [
+    { key: "equipment", label: text.equipment, choices: ["motorcycle", "car", "machine", "printer", "unknown"] },
+    { key: "symptom", label: text.symptom, choices: ["idle", "won't restart", "restarts", "unknown"] },
+    { key: "timing", label: text.timing, choices: ["cold", "hot", "after-use", "unknown"] },
+    { key: "restart", label: text.restart, choices: ["restarts", "won't restart", "unknown"] },
+    { key: "safety", label: text.safety, choices: ["oil-warning", "warning", "smoke", "fuel-smell", "none", "unknown"] },
+  ];
+  const summary = fields.map(({ key, label }) => answers[key] ? `${label}: ${text.options[answers[key] as Exclude<GuidedAnswer, "">]}` : "").filter(Boolean).join(". ");
+
+  return <Card className="border-zinc-200 bg-white"><CardHeader className="pb-3"><CardDescription>{text.title}</CardDescription><CardTitle className="mt-1 text-lg">{text.description}</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-medium text-zinc-700">{fields[0].label}<select value={answers.equipment} onChange={(event) => setAnswers((value) => ({ ...value, equipment: event.target.value as GuidedAnswer }))} className="mt-1.5 h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-normal text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900"><option value="">{text.choose}</option>{fields[0].choices.map((choice) => <option key={choice} value={choice}>{text.options[choice as Exclude<GuidedAnswer, "">]}</option>)}</select></label><label className="text-sm font-medium text-zinc-700">{fields[1].label}<select value={answers.symptom} onChange={(event) => setAnswers((value) => ({ ...value, symptom: event.target.value as GuidedAnswer }))} className="mt-1.5 h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-normal text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900"><option value="">{text.choose}</option>{fields[1].choices.map((choice) => <option key={choice} value={choice}>{text.options[choice as Exclude<GuidedAnswer, "">]}</option>)}</select></label><label className="text-sm font-medium text-zinc-700">{fields[2].label}<select value={answers.timing} onChange={(event) => setAnswers((value) => ({ ...value, timing: event.target.value as GuidedAnswer }))} className="mt-1.5 h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-normal text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900"><option value="">{text.choose}</option>{fields[2].choices.map((choice) => <option key={choice} value={choice}>{text.options[choice as Exclude<GuidedAnswer, "">]}</option>)}</select></label><label className="text-sm font-medium text-zinc-700">{fields[3].label}<select value={answers.restart} onChange={(event) => setAnswers((value) => ({ ...value, restart: event.target.value as GuidedAnswer }))} className="mt-1.5 h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-normal text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900"><option value="">{text.choose}</option>{fields[3].choices.map((choice) => <option key={choice} value={choice}>{text.options[choice as Exclude<GuidedAnswer, "">]}</option>)}</select></label><label className="text-sm font-medium text-zinc-700 sm:col-span-2">{fields[4].label}<select value={answers.safety} onChange={(event) => setAnswers((value) => ({ ...value, safety: event.target.value as GuidedAnswer }))} className="mt-1.5 h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm font-normal text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900"><option value="">{text.choose}</option>{fields[4].choices.map((choice) => <option key={choice} value={choice}>{text.options[choice as Exclude<GuidedAnswer, "">]}</option>)}</select></label></div><Button type="button" size="sm" disabled={!summary} onClick={() => onApply(summary)}>{text.apply}</Button></CardContent></Card>;
+}
+
+function DecisionLearning({ decision, language }: { decision?: AgentDecision; language: Language }) {
+  if (!decision || (!decision.technicalRecap && !decision.learningBrief && !decision.communityLeads?.length)) return null;
+  const text = learningText[language];
+  return <div className="grid gap-4 md:grid-cols-2">{decision.technicalRecap && <Card><CardHeader className="pb-2"><CardDescription>{text.recap}</CardDescription></CardHeader><CardContent><p className="text-sm leading-6 text-zinc-700">{decision.technicalRecap}</p></CardContent></Card>}{decision.learningBrief && <Card><CardHeader className="pb-2"><CardDescription>{text.lesson}</CardDescription></CardHeader><CardContent><p className="text-sm leading-6 text-zinc-700">{decision.learningBrief}</p></CardContent></Card>}{decision.communityLeads?.length ? <Card className="border-amber-300/60 md:col-span-2"><CardHeader className="pb-2"><CardDescription>{text.community}</CardDescription></CardHeader><CardContent className="space-y-3">{decision.communityLeads.map((lead) => <div key={`${lead.sourceTitle}-${lead.insight}`} className="border-l-2 border-amber-400 pl-3"><p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{text.report} · {lead.sourceTitle}</p><p className="mt-1 text-sm leading-6 text-zinc-800">{lead.insight}</p><p className="mt-1 text-sm leading-6 text-zinc-600"><span className="font-medium text-zinc-800">{text.confirm}:</span> {lead.safeConfirmation}</p></div>)}</CardContent></Card> : null}</div>;
+}
+
+function LearningNotebook({ decision, session, language }: { decision?: AgentDecision; session?: DiagnosticSession; language: Language }) {
+  const [entries, setEntries] = useState<LearningEntry[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(window.localStorage.getItem(learningNotebookKey) ?? "[]") as LearningEntry[];
+    } catch {
+      return [];
+    }
+  });
+  const text = notebookText[language];
+  function persist(nextEntries: LearningEntry[]) {
+    setEntries(nextEntries);
+    window.localStorage.setItem(learningNotebookKey, JSON.stringify(nextEntries));
+  }
+  function saveCurrentCase() {
+    if (!decision || !session || (!decision.technicalRecap && !decision.learningBrief)) return;
+    const entry: LearningEntry = {
+      id: `${session.id}-${session.updatedAt}`,
+      createdAt: new Date().toISOString(),
+      machine: [session.machine.manufacturer, session.machine.model, session.machine.type].filter(Boolean).join(" ") || "Equipment",
+      recap: decision.technicalRecap ?? decision.assistantMessage,
+      lesson: decision.learningBrief ?? "",
+      status: session.status,
+    };
+    persist([entry, ...entries.filter((item) => item.id !== entry.id)].slice(0, 12));
+  }
+  return <Card><CardHeader className="pb-3"><CardDescription>{text.title}</CardDescription><CardTitle className="mt-1 text-base">{text.description}</CardTitle></CardHeader><CardContent className="space-y-3">{decision && session ? <Button size="sm" variant="outline" onClick={saveCurrentCase}>{text.save}</Button> : null}{entries.length ? <><p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{text.saved}</p><ul className="space-y-3">{entries.slice(0, 3).map((entry) => <li key={entry.id} className="border-l-2 border-zinc-300 pl-3"><p className="text-sm font-medium text-zinc-800">{entry.machine}</p><p className="mt-1 text-xs leading-5 text-zinc-600">{entry.lesson || entry.recap}</p></li>)}</ul><Button size="sm" variant="ghost" onClick={() => persist([])}>{text.clear}</Button></> : <Empty>{text.empty}</Empty>}</CardContent></Card>;
+}
 
 export function WorkshopDashboard() {
   const [language, setLanguage] = useState<Language>("fr");
@@ -182,6 +261,8 @@ export function WorkshopDashboard() {
 
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1.65fr)_20rem] lg:px-8">
         <section className="space-y-5">
+          <GuidedOrientation language={language} onApply={setMessage} />
+          <DecisionLearning decision={decision} language={language} />
           <Card className="border-zinc-200 bg-white"><CardHeader className="border-b border-zinc-200"><div className="flex items-start justify-between gap-3"><div><CardDescription>{copy.workspace}</CardDescription><CardTitle className="mt-1 text-xl sm:text-2xl">{machineName}</CardTitle><p className="mt-2 text-sm text-zinc-500">{session?.machine.type || workspace.equipment} · {session ? statusLabel[language][session.status] : copy.active}</p></div><Badge variant="outline">{provider ?? "ready"}</Badge></div></CardHeader></Card>
 
           <Card className="border-zinc-300 bg-white shadow-lg shadow-zinc-200/30"><CardHeader><div className="flex items-start justify-between gap-4"><div><CardDescription className="font-semibold uppercase tracking-[0.16em] text-zinc-600">{copy.next}</CardDescription><CardTitle className="mt-2 text-xl">{currentTest?.title ?? copy.noTest}</CardTitle></div>{currentTest && <Badge variant={severity}>{statusLabel[language][currentTest.risk]}</Badge>}</div></CardHeader><CardContent className="space-y-4"><p className="text-base leading-7 text-zinc-950">{currentTest?.instruction ?? workspace.firstPrompt}</p>{currentTest?.purpose && <p className="border-l-2 border-zinc-300 pl-3 text-sm leading-6 text-zinc-500">{currentTest.purpose}</p>}{currentTest?.requiresPowerOff && <Alert className="border-amber-400/30 bg-amber-400/10 text-amber-100"><ShieldAlert className="mb-2 h-4 w-4" /><AlertTitle>{copy.safety}</AlertTitle><AlertDescription>Turn off and unplug the equipment before this test.</AlertDescription></Alert>}</CardContent></Card>
@@ -194,6 +275,7 @@ export function WorkshopDashboard() {
         </section>
 
         <aside className="space-y-5">
+          <LearningNotebook decision={decision} session={session} language={language} />
           <ContextCard title={copy.machine}><dl className="space-y-3 text-sm"><Info label={workspace.manufacturer} value={session?.machine.manufacturer || "—"} /><Info label={workspace.model} value={session?.machine.model || "—"} /><Info label={copy.status} value={session ? statusLabel[language][session.status] : "—"} /></dl></ContextCard>
           <ContextCard title={workspace.hypotheses}>{session?.hypotheses.length ? <div className="space-y-3">{session.hypotheses.map((hypothesis) => <div key={hypothesis.id} className="border-l-2 border-zinc-400 pl-3"><p className="text-sm font-medium">{hypothesis.title}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{hypothesis.rationale}</p><Badge className="mt-2" variant="outline">{hypothesis.confidence}</Badge></div>)}</div> : <Empty>{copy.noHypothesis}</Empty>}</ContextCard>
           {session?.safetyWarnings.length ? <ContextCard title={copy.safety} warning><ul className="space-y-2 text-sm text-amber-100">{session.safetyWarnings.slice(-3).map((warning) => <li key={warning}>• {warning}</li>)}</ul></ContextCard> : null}
