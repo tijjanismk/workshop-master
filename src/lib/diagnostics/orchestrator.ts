@@ -146,6 +146,7 @@ Adapt to the level shown in the technician's messages: use concise technical lan
 Accept clear technician statements as evidence. Do not ask them to repeat, prove, or reconfirm a fact already stated unless a safety-critical ambiguity makes it necessary. State that ambiguity and ask the smallest possible clarifying question.
 When the technician provides a test result, acknowledge it in one short phrase, update the hypothesis, and move directly to the most useful next action. Never repeat the entire session back to them.
 If the technician asks a direct technical question, answer it first from the session and retrieved evidence; only then give one next test if it is needed.
+Recognize when the technician changes from repair to workshop operations: client reception, delayed collection, price, payment, complaint, retention, or appointment. Stop the repair interrogation immediately, answer the operational need directly, and do not force the prior diagnostic questions.
 Separate observed facts, technician statements, retrieved evidence, and hypotheses.
 Separate the reported symptom from the probable underlying problem. Do not anchor on the first component or fault named by the technician, a forum, or a video.
 Maintain competing hypotheses when the evidence permits it, and choose the next low-risk test for its ability to distinguish between the most plausible causes.
@@ -198,6 +199,23 @@ function isVehicleReport(message: string) {
   return /\b(voiture|véhicule|vehicule|auto|car|vehicle|moto|motorcycle|camion|truck)\b/i.test(
     message,
   );
+}
+
+function isWorkshopOperationsMessage(message: string) {
+  const hasClient = /\b(client|customer|customers|cliente)\b/i.test(message);
+  const hasOperationsSignal = /\b(revenu|revient|revenir|récupér|recuper|prendre son téléphone|prendre son telephone|retard|prix|paiement|mécontent|mecontent|plainte|perdre.*client|fidélis|fidelis|rendez[- ]?vous|appointment)\b/i.test(message);
+  return hasClient && hasOperationsSignal;
+}
+
+function buildWorkshopOperationsDecision(message: string, language: SupportedLanguage): AgentDecision | undefined {
+  if (!isWorkshopOperationsMessage(message)) return undefined;
+  const copy = {
+    en: { message: "This is a customer-service moment, not a repair question. Acknowledge the customer first, state what is ready or what will happen next, and give a precise time if there is a delay.", recap: "Clear expectations reduce lost customers more reliably than continuing a technical diagnosis while the customer is waiting.", lesson: "When the business context changes, pause the repair flow and handle the customer’s immediate need first.", title: "Clarify the customer need", instruction: "Choose the customer situation below, then respond with one clear commitment.", purpose: "This protects trust before returning to the repair workflow.", question: "What does the customer need now?", choices: ["Collect a finished device", "A delay update", "Price or payment explanation", "Complaint or reassurance"] },
+    fr: { message: "Ici, c’est un moment de relation client, pas une question de réparation. Accueille d’abord le client, dis ce qui est prêt ou la prochaine étape, puis donne une heure précise s’il y a un retard.", recap: "Des attentes claires évitent plus facilement de perdre un client que de continuer le diagnostic pendant qu’il attend.", lesson: "Quand le sujet devient commercial, mets le dépannage en pause et traite d’abord le besoin immédiat du client.", title: "Préciser le besoin du client", instruction: "Choisis la situation du client, puis réponds avec un engagement clair.", purpose: "Protéger la confiance avant de reprendre le diagnostic.", question: "De quoi le client a-t-il besoin maintenant ?", choices: ["Récupérer un appareil terminé", "Une information sur le retard", "Une explication du prix ou paiement", "Une réclamation ou rassurance"] },
+    bm: { message: "Nin ye client dɛmɛ waati ye, a tɛ réparation ɲininkali ye. Client labɛn fɔlɔ, fɛn min bɛ se walima nata fɔ, ni retard bɛ yen waati ɲuman fɔ.", recap: "Client ka miiri kɛlen fɔli bɛ se ka u mara ka tɛmɛ réparation ɲini na ni a bɛ makɔnɔ.", lesson: "Ni baara ye client dɛmɛ kɛ, réparation da dɔrɔn ka client ka wajibi fɔlɔ kɛ.", title: "Client ka wajibi dɔn", instruction: "Client ka cogo sugandi, ka jaabi kelen fɔ ɲuman.", purpose: "Ladiri mara ka fɔlɔ ka réparation segin.", question: "Client b'a fɛ mun sisan ?", choices: ["Appareil ban bɔ", "Retard kunnafoni", "Prix walima paiement fɔli", "Plainte walima rassurance"] },
+    zh: { message: "这属于客户服务，而不是维修问题。先接待客户，说明已完成的内容或下一步；如有延误，请给出明确时间。", recap: "客户等待时，清晰的预期管理比继续追问维修问题更能避免客户流失。", lesson: "当话题变为经营或客户服务时，应暂停维修流程，先处理客户当前需求。", title: "明确客户当前需求", instruction: "选择客户情况，然后给出一个明确承诺。", purpose: "先保护客户信任，再回到维修流程。", question: "客户现在需要什么？", choices: ["领取已完成设备", "了解延误情况", "价格或付款说明", "投诉或需要安抚"] },
+  }[language];
+  return { assistantMessage: copy.message, technicalRecap: copy.recap, learningBrief: copy.lesson, communityLeads: [], followUpQuestions: [{ question: copy.question, choices: copy.choices }], machine: {}, observations: [], visualObservations: [], hypotheses: [], nextTest: { title: copy.title, instruction: copy.instruction, purpose: copy.purpose, risk: "low", requiresPowerOff: false }, safetyWarnings: [], status: "active" };
 }
 
 function hasUrgentVehicleSignal(message: string) {
@@ -734,6 +752,13 @@ export async function processTechnicianMessage(
   });
   if (session.symptoms.length === 0) {
     session.symptoms.push(message);
+  }
+
+  const operationsDecision = buildWorkshopOperationsDecision(message, language);
+  if (operationsDecision) {
+    applyDecision(session, operationsDecision, language);
+    await saveSession(session);
+    return { session, decision: operationsDecision, provider: "safe-fallback" };
   }
 
   const vehicleTriage = buildVehicleTriageDecision(session, message, language);

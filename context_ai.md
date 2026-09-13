@@ -279,3 +279,4 @@ A judge or technician can see that the product accepts evidence, remembers it, s
 - Added local related-case matching and a downloadable escalation report. Cross-user case sharing remains intentionally deferred until Supabase Auth and protected consent controls are in place.
 - Replaced the pre-diagnosis questionnaire with model-generated follow-up selectors: after the first reported symptom, the assistant can ask up to three evidence-driven, mutually exclusive questions; the generic selector remains only as a safe fallback.
 - Added a deterministic motorcycle-stall intake: it asks about timing, restart behavior, and safety signals before proposing a part or physical test.
+- Added workshop-operations intent switching: client collection, delays, price, payment, complaints, retention, and appointments pause repair questioning and receive direct customer-service guidance.
