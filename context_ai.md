@@ -276,3 +276,4 @@ A judge or technician can see that the product accepts evidence, remembers it, s
 - Added a multilingual guided-orientation form with selectable equipment, symptom, timing, restart, and safety answers. Its summary is passed into the existing diagnostic flow as technician context.
 - Added per-turn technical recaps, practical learning briefs, and explicitly-labelled community leads with safe confirmation steps. Community discussion is used for orientation only, never as proof; vehicle triage now recognizes negated danger signs such as "pas de fumée".
 - Added a browser-local learning notebook so an autodidact can save up to twelve useful diagnostic cases and their lesson for later review.
+- Added local related-case matching and a downloadable escalation report. Cross-user case sharing remains intentionally deferred until Supabase Auth and protected consent controls are in place.

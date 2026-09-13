@@ -93,6 +93,13 @@ const notebookText: Record<Language, { title: string; description: string; save:
   zh: { title: "我的学习笔记", description: "在此设备上保存有用案例和经验。", save: "保存此案例", saved: "已保存案例", empty: "有用案例将显示在这里。", clear: "清除" },
 };
 
+const continuationText: Record<Language, { similar: string; similarEmpty: string; report: string; reportDescription: string; download: string }> = {
+  en: { similar: "Related cases on this device", similarEmpty: "Save resolved cases to find them again when a similar problem returns.", report: "Escalate with a clear report", reportDescription: "Download the symptom, evidence, hypotheses, and current safe action for an experienced technician.", download: "Download report" },
+  fr: { similar: "Cas similaires sur cet appareil", similarEmpty: "Enregistre les cas résolus pour les retrouver lorsqu’un problème semblable revient.", report: "Escalader avec un rapport clair", reportDescription: "Télécharge le symptôme, les preuves, les hypothèses et l’action sûre actuelle pour un technicien expérimenté.", download: "Télécharger le rapport" },
+  bm: { similar: "Cas ɲɔgɔnnen nin appareil na", similarEmpty: "Cas minnu ban mara walasa ka se ka u ye tuguni ni gɛlɛnko ɲɔgɔnnen seginna.", report: "Rapɔri ɲuman ci expert ma", reportDescription: "Gɛlɛnko, dɔnni, miiri ani kɛcogo kisɛ télécharger ka ci technicien ma.", download: "Rapɔri télécharger" },
+  zh: { similar: "此设备上的相似案例", similarEmpty: "保存已解决案例，以便相似问题再次出现时查找。", report: "使用清晰报告升级处理", reportDescription: "下载症状、证据、假设和当前安全操作，交给经验丰富的技术员。", download: "下载报告" },
+};
+
 function GuidedOrientation({ language, onApply }: { language: Language; onApply: (summary: string) => void }) {
   const [answers, setAnswers] = useState<GuidedAnswers>({ equipment: "", symptom: "", timing: "", restart: "", safety: "" });
   const text = orientationText[language];
@@ -141,6 +148,42 @@ function LearningNotebook({ decision, session, language }: { decision?: AgentDec
     persist([entry, ...entries.filter((item) => item.id !== entry.id)].slice(0, 12));
   }
   return <Card><CardHeader className="pb-3"><CardDescription>{text.title}</CardDescription><CardTitle className="mt-1 text-base">{text.description}</CardTitle></CardHeader><CardContent className="space-y-3">{decision && session ? <Button size="sm" variant="outline" onClick={saveCurrentCase}>{text.save}</Button> : null}{entries.length ? <><p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{text.saved}</p><ul className="space-y-3">{entries.slice(0, 3).map((entry) => <li key={entry.id} className="border-l-2 border-zinc-300 pl-3"><p className="text-sm font-medium text-zinc-800">{entry.machine}</p><p className="mt-1 text-xs leading-5 text-zinc-600">{entry.lesson || entry.recap}</p></li>)}</ul><Button size="sm" variant="ghost" onClick={() => persist([])}>{text.clear}</Button></> : <Empty>{text.empty}</Empty>}</CardContent></Card>;
+}
+
+function LocalSimilarCases({ session, language }: { session?: DiagnosticSession; language: Language }) {
+  const text = continuationText[language];
+  const [entries] = useState<LearningEntry[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(window.localStorage.getItem(learningNotebookKey) ?? "[]") as LearningEntry[]; } catch { return []; }
+  });
+  if (!session) return null;
+  const terms = new Set(`${session.machine.type ?? ""} ${session.symptoms.join(" ")}`.toLowerCase().match(/[\p{L}\p{N}]{4,}/gu) ?? []);
+  const matches = entries.filter((entry) => [...terms].some((term) => `${entry.machine} ${entry.recap} ${entry.lesson}`.toLowerCase().includes(term))).slice(0, 3);
+  return <ContextCard title={text.similar}>{matches.length ? <ul className="space-y-3">{matches.map((entry) => <li key={entry.id} className="border-l-2 border-zinc-300 pl-3"><p className="text-sm font-medium text-zinc-800">{entry.machine}</p><p className="mt-1 text-xs leading-5 text-zinc-600">{entry.lesson || entry.recap}</p></li>)}</ul> : <Empty>{text.similarEmpty}</Empty>}</ContextCard>;
+}
+
+function EscalationReport({ session, decision, language }: { session?: DiagnosticSession; decision?: AgentDecision; language: Language }) {
+  const text = continuationText[language];
+  if (!session || !decision) return null;
+  const activeSession = session;
+  const activeDecision = decision;
+  function download() {
+    const report = [
+      "THE WORKSHOP MASTER — DIAGNOSTIC REPORT",
+      `Generated: ${new Date().toLocaleString()}`,
+      `Equipment: ${[activeSession.machine.manufacturer, activeSession.machine.model, activeSession.machine.type].filter(Boolean).join(" ") || "Unknown"}`,
+      `Status: ${activeSession.status}`,
+      `Reported symptoms: ${activeSession.symptoms.join(" | ") || "None"}`,
+      `Observations: ${activeSession.observations.map((item) => item.text).join(" | ") || "None"}`,
+      `Hypotheses: ${activeSession.hypotheses.map((item) => `${item.title} (${item.confidence})`).join(" | ") || "None"}`,
+      `Technical recap: ${activeDecision.technicalRecap ?? "None"}`,
+      `Current safe action: ${activeSession.currentTest?.instruction ?? "No active test"}`,
+      `Safety warnings: ${activeSession.safetyWarnings.join(" | ") || "None"}`,
+    ].join("\n\n");
+    const url = URL.createObjectURL(new Blob([report], { type: "text/plain;charset=utf-8" }));
+    const anchor = document.createElement("a"); anchor.href = url; anchor.download = `workshop-master-${activeSession.id}.txt`; anchor.click(); URL.revokeObjectURL(url);
+  }
+  return <Card><CardHeader className="pb-3"><CardDescription>{text.report}</CardDescription><CardTitle className="mt-1 text-base">{text.reportDescription}</CardTitle></CardHeader><CardContent><Button size="sm" variant="outline" onClick={download}>{text.download}</Button></CardContent></Card>;
 }
 
 export function WorkshopDashboard() {
@@ -276,6 +319,8 @@ export function WorkshopDashboard() {
 
         <aside className="space-y-5">
           <LearningNotebook decision={decision} session={session} language={language} />
+          <LocalSimilarCases session={session} language={language} />
+          <EscalationReport session={session} decision={decision} language={language} />
           <ContextCard title={copy.machine}><dl className="space-y-3 text-sm"><Info label={workspace.manufacturer} value={session?.machine.manufacturer || "—"} /><Info label={workspace.model} value={session?.machine.model || "—"} /><Info label={copy.status} value={session ? statusLabel[language][session.status] : "—"} /></dl></ContextCard>
           <ContextCard title={workspace.hypotheses}>{session?.hypotheses.length ? <div className="space-y-3">{session.hypotheses.map((hypothesis) => <div key={hypothesis.id} className="border-l-2 border-zinc-400 pl-3"><p className="text-sm font-medium">{hypothesis.title}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{hypothesis.rationale}</p><Badge className="mt-2" variant="outline">{hypothesis.confidence}</Badge></div>)}</div> : <Empty>{copy.noHypothesis}</Empty>}</ContextCard>
           {session?.safetyWarnings.length ? <ContextCard title={copy.safety} warning><ul className="space-y-2 text-sm text-amber-100">{session.safetyWarnings.slice(-3).map((warning) => <li key={warning}>• {warning}</li>)}</ul></ContextCard> : null}
