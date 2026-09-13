@@ -199,7 +199,7 @@ The primary screen is the **Diagnostic Workspace**, not a chatbot or accounting-
 
 Design direction:
 
-- Serious industrial-tech tool: deep navy/slate surfaces, electric blue for action, amber only for attention/safety.
+- Minimal industrial tool: off-white background, white cards, graphite text, monochrome primary actions, and amber only for attention/safety. Dark navy/blue-dominant surfaces are intentionally excluded.
 - No generic chatbot identity, cartoon robots, excessive gradients, or decorative animation.
 - Mobile workshop-floor use is first-class: touch-friendly actions, readable contrast, clear labels, and a layout that does not merely shrink desktop.
 - Bambara is experimental. French, English, Simplified Chinese, and Bambara remain accessible in the language control.
@@ -272,3 +272,4 @@ A judge or technician can see that the product accepts evidence, remembers it, s
 - Added Exa manufacturer/community/video retrieval routine and evidence-source classification.
 - Added the transparent processing message explaining that the AI is reviewing context, sources, and safety.
 - Replaced HeroUI with local shadcn/ui primitives and rebuilt the main workspace and Telegram demo without HeroUI imports.
+- Replaced the dark-blue visual palette with a minimal light neutral palette (off-white, white, zinc/graphite, and amber safety states).

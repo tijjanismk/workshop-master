@@ -3,7 +3,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const Alert = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => <div ref={ref} role="alert" className={cn("relative w-full rounded-lg border border-slate-700 p-4 text-sm", className)} {...props} />,
+  ({ className, ...props }, ref) => <div ref={ref} role="alert" className={cn("relative w-full rounded-lg border border-zinc-300 p-4 text-sm", className)} {...props} />,
 );
 Alert.displayName = "Alert";
 const AlertTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
